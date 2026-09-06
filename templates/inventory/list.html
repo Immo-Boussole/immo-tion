@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Inventaire & Équipements — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📦 Inventaire des Équipements & Garanties</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      Électroménager, domotique et installations techniques pour <strong>{{ active_property.name }}</strong>
+      {% else %}
+      Sélectionnez un bien pour consulter son inventaire.
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div>
+    <button type="button" class="btn btn-primary" data-modal-open="addItemModal">
+      ➕ Ajouter un équipement
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>Veuillez d'abord créer ou sélectionner un bien immobilier.</p>
+</div>
+{% else %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Équipement</th>
+          <th>Catégorie</th>
+          <th>Marque & Modèle</th>
+          <th>Numéro de Série</th>
+          <th>Date d'Achat</th>
+          <th>Fin de Garantie</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+        <tr>
+          <td><strong>{{ item.name }}</strong></td>
+          <td><span class="badge badge-primary">{{ item.category }}</span></td>
+          <td>{{ item.brand or '-' }} {{ item.model_number or '' }}</td>
+          <td><code style="font-size: 0.85rem;">{{ item.serial_number or '-' }}</code></td>
+          <td>{{ item.purchase_date or '-' }}</td>
+          <td>
+            {% if item.warranty_status %}
+            <span class="badge badge-{{ item.warranty_status.badge }}">{{ item.warranty_expiry_date }}</span>
+            {% else %}
+            -
+            {% endif %}
+          </td>
+          <td>
+            <form action="/inventory/{{ item.id }}/delete" method="post" onsubmit="return confirm('Supprimer cet équipement ?');">
+              <button type="submit" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--danger);">
+                🗑️
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Aucun équipement inventorié pour l'instant.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Add Equipment -->
+<div id="addItemModal" class="modal">
+  <div class="modal-content">
+    <div class="card-header">
+      <h3 class="card-title">Ajouter un équipement</h3>
+      <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;">✕</button>
+    </div>
+    <form action="/inventory" method="post">
+      <input type="hidden" name="property_id" value="{{ active_property.id }}">
+
+      <div class="form-group">
+        <label class="form-label" for="item_name">Désignation *</label>
+        <input type="text" id="item_name" name="name" class="form-control" placeholder="ex: Lave-linge, Pompe à Chaleur, Four encastrable..." required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="item_brand">Marque</label>
+          <input type="text" id="item_brand" name="brand" class="form-control" placeholder="Bosch, Atlantic, Daikin...">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item_model">Référence / Modèle</label>
+          <input type="text" id="item_model" name="model_number" class="form-control" placeholder="WAN28208FF">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="item_category">Catégorie</label>
+          <select id="item_category" name="category" class="form-control">
+            <option value="Électroménager">Électroménager</option>
+            <option value="Chauffage/Clim">Chauffage / Climatisation</option>
+            <option value="Domotique/Réseau">Domotique & Réseau</option>
+            <option value="Sanitaire/Plomberie">Sanitaire & Plomberie</option>
+            <option value="Jardin/Extérieur">Jardin & Extérieur</option>
+            <option value="Mobilier">Mobilier</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item_serial">Numéro de série</label>
+          <input type="text" id="item_serial" name="serial_number" class="form-control" placeholder="SN123456789">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="item_purchase_date">Date d'achat</label>
+          <input type="date" id="item_purchase_date" name="purchase_date" class="form-control">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item_warranty">Fin de garantie constructeur</label>
+          <input type="date" id="item_warranty" name="warranty_expiry_date" class="form-control">
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="item_price">Prix d'achat TTC (€)</label>
+          <input type="number" step="0.01" id="item_price" name="purchase_price" class="form-control" placeholder="650">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="item_vendor">Enseigne / Vendeur</label>
+          <input type="text" id="item_vendor" name="vendor" class="form-control" placeholder="Darty, Boulanger...">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="item_notes">Notes (consommables, filtres compatibles...)</label>
+        <textarea id="item_notes" name="notes" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <button type="button" data-modal-close class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer l'équipement</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

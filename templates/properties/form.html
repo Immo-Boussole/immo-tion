@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Nouveau Bien — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">➕ Ajouter un Nouveau Bien</h1>
+    <p style="color: var(--text-muted);">Enregistrez un bien pour commencer le suivi technique et l'entretien.</p>
+  </div>
+  <a href="/properties" class="btn btn-outline">Annuler</a>
+</div>
+
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+  <form action="/properties" method="post">
+    <div class="form-group">
+      <label class="form-label" for="name">Nom du bien *</label>
+      <input type="text" id="name" name="name" class="form-control" placeholder="ex: Résidence Principale, Maison de Campagne..." required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="address">Adresse *</label>
+      <input type="text" id="address" name="address" class="form-control" placeholder="12 Rue des Lilas" required>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="postal_code">Code Postal</label>
+        <input type="text" id="postal_code" name="postal_code" class="form-control" placeholder="75011">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="city">Ville</label>
+        <input type="text" id="city" name="city" class="form-control" placeholder="Paris">
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="surface_m2">Surface habitable (m²)</label>
+        <input type="number" step="0.1" id="surface_m2" name="surface_m2" class="form-control" placeholder="115">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="land_surface_m2">Surface terrain (m²)</label>
+        <input type="number" step="0.1" id="land_surface_m2" name="land_surface_m2" class="form-control" placeholder="450">
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="cadastral_reference">Référence Cadastrale</label>
+        <input type="text" id="cadastral_reference" name="cadastral_reference" class="form-control" placeholder="Section AB Parcelle 0123">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="dpe_rating">Classe DPE</label>
+        <select id="dpe_rating" name="dpe_rating" class="form-control">
+          <option value="">Non défini</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="G">G</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ges_rating">Classe GES</label>
+        <select id="ges_rating" name="ges_rating" class="form-control">
+          <option value="">Non défini</option>
+          <option value="A">A</option>
+          <option value="B">B</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="G">G</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div class="form-group">
+        <label class="form-label" for="acquisition_date">Date d'acquisition</label>
+        <input type="date" id="acquisition_date" name="acquisition_date" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="acquisition_price">Prix d'achat (€)</label>
+        <input type="number" step="1" id="acquisition_price" name="acquisition_price" class="form-control" placeholder="350000">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="notes">Notes & Particularités</label>
+      <textarea id="notes" name="notes" class="form-control" rows="3" placeholder="Informations utiles, accès, particularités techniques..."></textarea>
+    </div>
+
+    <div class="form-group" style="background-color: var(--primary-light); padding: 1rem; border-radius: 8px;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+        <input type="checkbox" name="seed_tasks" value="true" checked style="width: 18px; height: 18px;">
+        <span style="font-weight: 600;">Initialiser automatiquement le carnet d'entretien standard</span>
+      </label>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem; margin-left: 1.6rem;">
+        Crée les tâches de base recommandées : révision chaudière, ramonage, filtres VMC, chéneaux toiture, et tests DAAF.
+      </p>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+      <a href="/properties" class="btn btn-outline">Annuler</a>
+      <button type="submit" class="btn btn-primary">Enregistrer le bien</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

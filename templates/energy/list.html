@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}Énergie & Consommations — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">⚡ Suivi des Consommations & Énergie</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      Relevés de compteurs (électricité, eau, gaz, bois) pour <strong>{{ active_property.name }}</strong>
+      {% else %}
+      Sélectionnez un bien pour consulter ses consommations.
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div>
+    <button type="button" class="btn btn-primary" data-modal-open="addReadingModal">
+      ➕ Enregistrer un relevé
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>Veuillez d'abord créer ou sélectionner un bien immobilier.</p>
+</div>
+{% else %}
+
+<!-- Totals by energy type -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-title">Électricité</div>
+    <div class="kpi-value">{{ "%.0f"|format(totals.get('Électricité', 0)) }} <span style="font-size: 1rem; color: var(--text-muted);">kWh</span></div>
+    <div class="kpi-subtext">Total cumulé des relevés</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Eau</div>
+    <div class="kpi-value">{{ "%.1f"|format(totals.get('Eau', 0)) }} <span style="font-size: 1rem; color: var(--text-muted);">m³</span></div>
+    <div class="kpi-subtext">Total cumulé des relevés</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Gaz</div>
+    <div class="kpi-value">{{ "%.0f"|format(totals.get('Gaz', 0)) }} <span style="font-size: 1rem; color: var(--text-muted);">kWh / m³</span></div>
+    <div class="kpi-subtext">Total cumulé des relevés</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Chauffage Bois / Pellets</div>
+    <div class="kpi-value">{{ "%.0f"|format(totals.get('Granulés/Bois', 0)) }} <span style="font-size: 1rem; color: var(--text-muted);">kg</span></div>
+    <div class="kpi-subtext">Total cumulé des relevés</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Historique des Relevés</h2>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Énergie</th>
+          <th>Date du relevé</th>
+          <th>Index / Consommation</th>
+          <th>Unité</th>
+          <th>Coût estimé (€)</th>
+          <th>Notes</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in readings %}
+        <tr>
+          <td><span class="badge badge-primary">{{ r.energy_type }}</span></td>
+          <td>{{ r.reading_date }}</td>
+          <td><strong>{{ r.reading_value }}</strong></td>
+          <td>{{ r.unit }}</td>
+          <td>{% if r.cost %}{{ "%.2f"|format(r.cost) }} €{% else %}-{% endif %}</td>
+          <td><small style="color: var(--text-muted);">{{ r.notes or '-' }}</small></td>
+          <td>
+            <form action="/energy/readings/{{ r.id }}/delete" method="post" onsubmit="return confirm('Supprimer ce relevé ?');">
+              <button type="submit" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--danger);">
+                🗑️
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Aucun relevé d'énergie enregistré.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Add Reading -->
+<div id="addReadingModal" class="modal">
+  <div class="modal-content">
+    <div class="card-header">
+      <h3 class="card-title">Ajouter un relevé d'énergie</h3>
+      <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;">✕</button>
+    </div>
+    <form action="/energy/readings" method="post">
+      <input type="hidden" name="property_id" value="{{ active_property.id }}">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="reading_type">Type d'énergie</label>
+          <select id="reading_type" name="energy_type" class="form-control">
+            <option value="Électricité">Électricité</option>
+            <option value="Eau">Eau</option>
+            <option value="Gaz">Gaz</option>
+            <option value="Granulés/Bois">Granulés / Bois</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reading_date">Date du relevé *</label>
+          <input type="date" id="reading_date" name="reading_date" class="form-control" required>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="reading_value">Valeur relevée *</label>
+          <input type="number" step="0.01" id="reading_value" name="reading_value" class="form-control" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="reading_unit">Unité</label>
+          <input type="text" id="reading_unit" name="unit" class="form-control" value="kWh">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reading_cost">Coût facturé (€, optionnel)</label>
+        <input type="number" step="0.01" id="reading_cost" name="cost" class="form-control" placeholder="125.50">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="reading_notes">Notes (compteur Linky, période de chauffe...)</label>
+        <textarea id="reading_notes" name="notes" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <button type="button" data-modal-close class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Enregistrer le relevé</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Mes Biens — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🏡 Mes Biens Immobiliers</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Gérez vos résidences principales, secondaires ou investissements locatifs.</p>
+  </div>
+  <div>
+    <a href="/properties/new" class="btn btn-primary">➕ Ajouter un bien</a>
+  </div>
+</div>
+
+<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+  {% for p in properties %}
+  <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+        <h2 style="font-size: 1.25rem; font-weight: 700;">{{ p.name }}</h2>
+        {% if p.dpe_rating %}
+        <span class="badge badge-primary">DPE {{ p.dpe_rating }}</span>
+        {% endif %}
+      </div>
+      <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;">
+        📍 {{ p.address }}{% if p.city %}, {{ p.postal_code }} {{ p.city }}{% endif %}
+      </p>
+
+      <div style="display: flex; gap: 1rem; margin-bottom: 1rem; font-size: 0.9rem;">
+        {% if p.surface_m2 %}
+        <div><strong>{{ p.surface_m2 }}</strong> m²</div>
+        {% endif %}
+        {% if p.land_surface_m2 %}
+        <div>Terrain: <strong>{{ p.land_surface_m2 }}</strong> m²</div>
+        {% endif %}
+        {% if p.acquisition_price %}
+        <div>Acquis: <strong>{{ "%.0f"|format(p.acquisition_price) }}</strong> €</div>
+        {% endif %}
+      </div>
+
+      <div style="background-color: var(--gray-50); padding: 0.75rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem;">
+        <div>🔄 <strong>{{ p.tasks_count }}</strong> opérations d'entretien</div>
+        <div>🛠️ <strong>{{ p.renovations_count }}</strong> chantiers & travaux</div>
+        <div>📦 <strong>{{ p.inventory_count }}</strong> équipements inventoriés</div>
+      </div>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+      <a href="/properties/{{ p.id }}" class="btn btn-outline" style="font-size: 0.85rem;">Fiche détaillée</a>
+      <a href="/?property_id={{ p.id }}" class="btn btn-primary" style="font-size: 0.85rem;">Ouvrir tableau de bord</a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+    <p>Aucun bien enregistré pour l'instant.</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

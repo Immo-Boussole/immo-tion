@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}{{ property.name }} — Détails — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🏡 {{ property.name }}</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {{ property.address }}{% if property.city %}, {{ property.postal_code }} {{ property.city }}{% endif %}
+    </p>
+  </div>
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="/?property_id={{ property.id }}" class="btn btn-primary">📊 Ouvrir tableau de bord</a>
+    <form action="/properties/{{ property.id }}/delete" method="post" onsubmit="return confirm('Supprimer ce bien et toutes ses données associées ?');">
+      <button type="submit" class="btn btn-danger">Supprimer</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">Fiche Signalétique</h2>
+  </div>
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem;">
+    <div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">Surface Habitable</div>
+      <div style="font-size: 1.2rem; font-weight: 700;">{{ property.surface_m2 or 'N/A' }} m²</div>
+    </div>
+    <div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">Surface Terrain</div>
+      <div style="font-size: 1.2rem; font-weight: 700;">{{ property.land_surface_m2 or 'N/A' }} m²</div>
+    </div>
+    <div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">Cadastre</div>
+      <div style="font-size: 1.2rem; font-weight: 700;">{{ property.cadastral_reference or 'Non renseigné' }}</div>
+    </div>
+    <div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">Classe Énergie (DPE / GES)</div>
+      <div style="font-size: 1.2rem; font-weight: 700;">
+        {% if property.dpe_rating %}<span class="badge badge-primary">{{ property.dpe_rating }}</span>{% else %}N/A{% endif %}
+        /
+        {% if property.ges_rating %}<span class="badge badge-primary">{{ property.ges_rating }}</span>{% else %}N/A{% endif %}
+      </div>
+    </div>
+    <div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">Date d'acquisition</div>
+      <div style="font-size: 1.2rem; font-weight: 700;">{{ property.acquisition_date or 'N/A' }}</div>
+    </div>
+    <div>
+      <div style="color: var(--text-muted); font-size: 0.85rem;">Prix d'achat</div>
+      <div style="font-size: 1.2rem; font-weight: 700;">
+        {% if property.acquisition_price %}{{ "%.0f"|format(property.acquisition_price) }} €{% else %}N/A{% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if property.notes %}
+  <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+    <h3 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.5rem;">Notes & Contacts :</h3>
+    <pre style="white-space: pre-wrap; font-family: inherit; color: var(--text-muted); font-size: 0.9rem;">{{ property.notes }}</pre>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Quick Navigation to Pillars -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-top: 1.5rem;">
+  <div class="card">
+    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">🔄 Carnet d'Entretien ({{ tasks|length }})</h3>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Suivi périodique des obligations et révisions.</p>
+    <a href="/maintenance?property_id={{ property.id }}" class="btn btn-outline">Gérer l'entretien</a>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">🛠️ Chantiers & Travaux ({{ renovations|length }})</h3>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Devis, factures, artisans et décennales.</p>
+    <a href="/renovations?property_id={{ property.id }}" class="btn btn-outline">Suivre les travaux</a>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">📦 Inventaire & Appareils ({{ inventory|length }})</h3>
+    <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">Électroménager, notices et fins de garanties.</p>
+    <a href="/inventory?property_id={{ property.id }}" class="btn btn-outline">Voir l'inventaire</a>
+  </div>
+</div>
+{% endblock %}

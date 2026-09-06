@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de Bord — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      {% if active_property %}
+      🏡 {{ active_property.name }}
+      {% else %}
+      Bienvenue sur Immo-Tion
+      {% endif %}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      {{ active_property.address }}{% if active_property.city %}, {{ active_property.postal_code }} {{ active_property.city }}{% endif %}
+      {% else %}
+      Votre carnet d'entretien numérique et compagnon de vie du logement.
+      {% endif %}
+    </p>
+  </div>
+  <div>
+    <a href="/properties/new" class="btn btn-outline">➕ Ajouter un bien</a>
+  </div>
+</div>
+
+{% if not active_property %}
+<!-- Empty state when no properties exist -->
+<div class="card" style="text-align: center; padding: 3rem 1.5rem;">
+  <h2>Aucun bien enregistré</h2>
+  <p style="color: var(--text-muted); margin: 1rem 0 1.5rem;">
+    Commencez par ajouter votre résidence principale ou importez directement votre bien depuis <strong>Immo-Boussole</strong> !
+  </p>
+  <a href="/properties/new" class="btn btn-primary">➕ Créer mon premier bien</a>
+</div>
+{% else %}
+
+<!-- KPI Cards Grid -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-title">Alertes d'Entretien</div>
+    <div class="kpi-value" style="color: {% if summary.overdue_tasks|length > 0 %}var(--danger){% else %}var(--success){% endif %};">
+      {{ summary.overdue_tasks|length }}
+    </div>
+    <div class="kpi-subtext">
+      {% if summary.overdue_tasks|length > 0 %}
+      ⚠️ Tâches en retard à traiter
+      {% else %}
+      ✅ Tout est à jour
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">À Faire sous 30 jours</div>
+    <div class="kpi-value" style="color: var(--warning);">
+      {{ summary.due_soon_tasks|length }}
+    </div>
+    <div class="kpi-subtext">Échéances de maintenance à planifier</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Travaux Réalisés</div>
+    <div class="kpi-value">{{ "%.0f"|format(summary.total_actual_cost) }} €</div>
+    <div class="kpi-subtext">Sur {{ summary.renovations_count }} projet(s) de rénovation</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Garanties en Cours</div>
+    <div class="kpi-value">{{ summary.expiring_warranties|length }}</div>
+    <div class="kpi-subtext">Garanties expirant prochainement</div>
+  </div>
+</div>
+
+<!-- Urgent Overdue Maintenance Alerts -->
+{% if summary.overdue_tasks|length > 0 %}
+<div class="card" style="border-left: 4px solid var(--danger);">
+  <div class="card-header">
+    <h2 class="card-title" style="color: var(--danger);">⚠️ Interventions d'entretien en retard</h2>
+    <a href="/maintenance?property_id={{ active_property.id }}" class="btn btn-outline" style="font-size: 0.85rem;">Voir tout</a>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Tâche</th>
+          <th>Catégorie</th>
+          <th>Échéance</th>
+          <th>Statut</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in summary.overdue_tasks %}
+        <tr>
+          <td><strong>{{ t.title }}</strong></td>
+          <td>{{ t.category }}</td>
+          <td>{{ t.next_due_date }}</td>
+          <td>
+            <span class="badge badge-danger">{{ t.status_info.label_fr }}</span>
+          </td>
+          <td>
+            <a href="/maintenance?property_id={{ active_property.id }}" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.65rem;">
+              Enregistrer intervention
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Upcoming tasks & warranties in a 2-column layout -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 1.5rem;">
+  <!-- Next Due Maintenance -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">🔄 Prochaines échéances d'entretien</h2>
+      <a href="/maintenance/ical/{{ active_property.id }}" class="btn btn-outline" style="font-size: 0.8rem;" title="Télécharger le flux iCal">
+        📅 Flux iCal
+      </a>
+    </div>
+    {% if summary.due_soon_tasks|length > 0 or summary.ok_tasks|length > 0 %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Opération</th>
+            <th>Échéance</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in (summary.due_soon_tasks + summary.ok_tasks)[:5] %}
+          <tr>
+            <td><strong>{{ t.title }}</strong></td>
+            <td>{{ t.next_due_date }}</td>
+            <td>
+              <span class="badge badge-{{ t.status_info.badge }}">{{ t.status_info.label_fr }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Aucune tâche programmée.</p>
+    {% endif %}
+  </div>
+
+  <!-- Expiring Warranties -->
+  <div class="card">
+    <div class="card-header">
+      <h2 class="card-title">🛡️ Fin de garanties équipements</h2>
+      <a href="/inventory?property_id={{ active_property.id }}" class="btn btn-outline" style="font-size: 0.85rem;">Voir inventaire</a>
+    </div>
+    {% if summary.expiring_warranties|length > 0 %}
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Équipement</th>
+            <th>Fin de garantie</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in summary.expiring_warranties[:5] %}
+          <tr>
+            <td><strong>{{ item.name }}</strong> <small style="color: var(--text-muted);">({{ item.brand or 'N/A' }})</small></td>
+            <td>{{ item.warranty_expiry_date }}</td>
+            <td>
+              <span class="badge badge-{{ item.warranty_status.badge }}">{{ item.warranty_status.label_fr }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <p style="color: var(--text-muted); font-size: 0.95rem;">Aucune fin de garantie imminente.</p>
+    {% endif %}
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

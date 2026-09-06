@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Carnet d'Entretien — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🔄 Carnet d'Entretien Récurrent</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      Planification et historique des révisions obligatoires pour <strong>{{ active_property.name }}</strong>
+      {% else %}
+      Sélectionnez un bien pour consulter son carnet d'entretien.
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div style="display: flex; gap: 0.5rem;">
+    <a href="/maintenance/ical/{{ active_property.id }}" class="btn btn-outline" title="S'abonner via Google Calendar ou Apple Calendar">
+      📅 Flux iCal
+    </a>
+    <button type="button" class="btn btn-primary" data-modal-open="addTaskModal">
+      ➕ Ajouter une opération
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>Veuillez d'abord créer ou sélectionner un bien immobilier.</p>
+</div>
+{% else %}
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Opération</th>
+          <th>Catégorie</th>
+          <th>Périodicité</th>
+          <th>Dernière Fois</th>
+          <th>Prochaine Échéance</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tasks %}
+        <tr>
+          <td>
+            <strong>{{ t.title }}</strong>
+            {% if t.description %}
+            <div style="color: var(--text-muted); font-size: 0.8rem;">{{ t.description }}</div>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-primary">{{ t.category }}</span></td>
+          <td>Tous les {{ t.recurrence_months }} mois</td>
+          <td>{{ t.last_performed_date or 'Jamais' }}</td>
+          <td><strong>{{ t.next_due_date }}</strong></td>
+          <td>
+            <span class="badge badge-{{ t.status_info.badge }}">{{ t.status_info.label_fr }}</span>
+          </td>
+          <td>
+            <div style="display: flex; gap: 0.4rem;">
+              <button type="button" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.5rem; font-size: 0.8rem;" 
+                      data-modal-open="logModal-{{ t.id }}">
+                ✅ Valider
+              </button>
+              <form action="/maintenance/tasks/{{ t.id }}/delete" method="post" onsubmit="return confirm('Supprimer cette tâche ?');">
+                <button type="submit" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--danger);">
+                  🗑️
+                </button>
+              </form>
+            </div>
+
+            <!-- Modal for logging an intervention -->
+            <div id="logModal-{{ t.id }}" class="modal">
+              <div class="modal-content">
+                <div class="card-header">
+                  <h3 class="card-title">Enregistrer une intervention</h3>
+                  <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;">✕</button>
+                </div>
+                <form action="/maintenance/tasks/{{ t.id }}/log" method="post">
+                  <p style="margin-bottom: 1rem; font-weight: 600;">{{ t.title }}</p>
+
+                  <div class="form-group">
+                    <label class="form-label" for="perf_date_{{ t.id }}">Date de l'intervention *</label>
+                    <input type="date" id="perf_date_{{ t.id }}" name="performed_date" class="form-control" required>
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label" for="perf_by_{{ t.id }}">Intervenant (Artisan ou soi-même)</label>
+                    <input type="text" id="perf_by_{{ t.id }}" name="performed_by" class="form-control" value="{{ t.preferred_contractor or '' }}" placeholder="ex: Chauffagiste Pro / Propriétaire">
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label" for="cost_{{ t.id }}">Coût TTC (€)</label>
+                    <input type="number" step="0.01" id="cost_{{ t.id }}" name="cost" class="form-control" value="{{ t.estimated_cost or '' }}">
+                  </div>
+
+                  <div class="form-group">
+                    <label class="form-label" for="notes_{{ t.id }}">Observations / Numéro de certificat</label>
+                    <textarea id="notes_{{ t.id }}" name="notes" class="form-control" rows="2" placeholder="Numéro d'attestation, pièces remplacées..."></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                      <input type="checkbox" name="update_next_due" value="true" checked style="width: 16px; height: 16px;">
+                      <span>Recalculer automatiquement la prochaine échéance (+{{ t.recurrence_months }} mois)</span>
+                    </label>
+                  </div>
+
+                  <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+                    <button type="button" data-modal-close class="btn btn-outline">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Aucune opération d'entretien configurée.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Add Task -->
+<div id="addTaskModal" class="modal">
+  <div class="modal-content">
+    <div class="card-header">
+      <h3 class="card-title">Nouvelle opération d'entretien</h3>
+      <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;">✕</button>
+    </div>
+    <form action="/maintenance/tasks" method="post">
+      <input type="hidden" name="property_id" value="{{ active_property.id }}">
+
+      <div class="form-group">
+        <label class="form-label" for="task_title">Titre de l'opération *</label>
+        <input type="text" id="task_title" name="title" class="form-control" placeholder="ex: Démoussage toiture, révision adoucisseur..." required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="task_category">Catégorie</label>
+          <select id="task_category" name="category" class="form-control">
+            <option value="Chauffage">Chauffage</option>
+            <option value="Ventilation">Ventilation</option>
+            <option value="Toiture">Toiture</option>
+            <option value="Plomberie">Plomberie</option>
+            <option value="Électricité">Électricité</option>
+            <option value="Sécurité">Sécurité</option>
+            <option value="Extérieur">Extérieur</option>
+            <option value="Autre">Autre</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="task_recurrence">Périodicité (mois)</label>
+          <input type="number" id="task_recurrence" name="recurrence_months" class="form-control" value="12" min="1" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="task_due_date">Prochaine échéance *</label>
+        <input type="date" id="task_due_date" name="next_due_date" class="form-control" required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="task_cost">Coût moyen estimé (€)</label>
+          <input type="number" step="0.01" id="task_cost" name="estimated_cost" class="form-control" placeholder="120">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="task_contractor">Artisan habituel</label>
+          <input type="text" id="task_contractor" name="preferred_contractor" class="form-control" placeholder="Nom ou entreprise">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="task_desc">Description / Instructions</label>
+        <textarea id="task_desc" name="description" class="form-control" rows="2" placeholder="Détails techniques, références des pièces..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <button type="button" data-modal-close class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer la tâche</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

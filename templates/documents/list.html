@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Coffre-fort Documentaire — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📑 Coffre-fort Documentaire</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      Plans, actes notariés, diagnostics et contrats pour <strong>{{ active_property.name }}</strong>
+      {% else %}
+      Sélectionnez un bien pour consulter ses documents.
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div>
+    <button type="button" class="btn btn-primary" data-modal-open="uploadDocModal">
+      ➕ Téléverser un document
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>Veuillez d'abord créer ou sélectionner un bien immobilier.</p>
+</div>
+{% else %}
+
+<!-- Categories Filter Chips -->
+<div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+  <a href="/documents?property_id={{ active_property.id }}" class="btn {% if not selected_category %}btn-primary{% else %}btn-outline{% endif %}" style="min-height: 38px; font-size: 0.85rem;">
+    Tous
+  </a>
+  {% for cat in ['Acquisition', 'Assurance', 'Urbanisme/Cadastre', 'Énergie/Réseaux', 'Diagnostics', 'Travaux', 'Autre'] %}
+  <a href="/documents?property_id={{ active_property.id }}&category={{ cat }}" 
+     class="btn {% if selected_category == cat %}btn-primary{% else %}btn-outline{% endif %}" 
+     style="min-height: 38px; font-size: 0.85rem;">
+    {{ cat }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Titre du document</th>
+          <th>Catégorie</th>
+          <th>Date de dépôt</th>
+          <th>Taille</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in documents %}
+        <tr>
+          <td>
+            <strong>📄 {{ doc.title }}</strong>
+            {% if doc.notes %}
+            <div style="color: var(--text-muted); font-size: 0.8rem;">{{ doc.notes }}</div>
+            {% endif %}
+          </td>
+          <td><span class="badge badge-primary">{{ doc.category }}</span></td>
+          <td>{{ doc.upload_date[:10] }}</td>
+          <td>{{ "%.1f"|format((doc.file_size or 0) / 1024) }} Ko</td>
+          <td>
+            <div style="display: flex; gap: 0.4rem;">
+              <a href="/documents/{{ doc.id }}/download" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.65rem; font-size: 0.8rem;">
+                📥 Télécharger
+              </a>
+              <form action="/documents/{{ doc.id }}/delete" method="post" onsubmit="return confirm('Supprimer définitivement ce document ?');">
+                <button type="submit" class="btn btn-outline" style="min-height: 36px; padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--danger);">
+                  🗑️
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+            Aucun document trouvé pour cette sélection.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Upload Document -->
+<div id="uploadDocModal" class="modal">
+  <div class="modal-content">
+    <div class="card-header">
+      <h3 class="card-title">Ajouter un document au coffre-fort</h3>
+      <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;">✕</button>
+    </div>
+    <form action="/documents/upload" method="post" enctype="multipart/form-data">
+      <input type="hidden" name="property_id" value="{{ active_property.id }}">
+
+      <div class="form-group">
+        <label class="form-label" for="doc_title">Titre du document *</label>
+        <input type="text" id="doc_title" name="title" class="form-control" placeholder="ex: Acte notarié définitif, Attestation assurance 2026..." required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="doc_category">Catégorie</label>
+        <select id="doc_category" name="category" class="form-control">
+          <option value="Acquisition">Acquisition (Compromis, Acte notarié, Plans)</option>
+          <option value="Assurance">Assurance (Multirisque, Quittances)</option>
+          <option value="Urbanisme/Cadastre">Urbanisme / Cadastre (Permis, Déclaration)</option>
+          <option value="Énergie/Réseaux">Énergie & Réseaux (Schémas, Contrats)</option>
+          <option value="Diagnostics">Diagnostics Techniques (DPE, Amiante, Plomb)</option>
+          <option value="Travaux">Travaux & Chantiers</option>
+          <option value="Autre">Autre</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="doc_file">Fichier (PDF, image, plan...) *</label>
+        <input type="file" id="doc_file" name="file" class="form-control" required>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="doc_notes">Observations complémentaires</label>
+        <textarea id="doc_notes" name="notes" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <button type="button" data-modal-close class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Téléverser</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Travaux & Chantiers — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">🛠️ Projets de Travaux & Rénovations</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      Suivi budgétaire, artisans et garanties décennales pour <strong>{{ active_property.name }}</strong>
+      {% else %}
+      Sélectionnez un bien pour consulter ses chantiers.
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div>
+    <button type="button" class="btn btn-primary" data-modal-open="addRenovModal">
+      ➕ Nouveau projet de travaux
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>Veuillez d'abord créer ou sélectionner un bien immobilier.</p>
+</div>
+{% else %}
+
+<div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
+  {% for r in renovations %}
+  <div class="card" style="display: flex; flex-direction: column; justify-content: space-between;">
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+        <h2 style="font-size: 1.2rem; font-weight: 700;">{{ r.title }}</h2>
+        <span class="badge {% if r.status == 'Terminé' %}badge-success{% elif r.status == 'En cours' %}badge-warning{% else %}badge-primary{% endif %}">
+          {{ r.status }}
+        </span>
+      </div>
+      <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+        Catégorie : <strong>{{ r.category }}</strong>
+      </div>
+
+      <div style="background-color: var(--gray-50); padding: 0.75rem; border-radius: 8px; font-size: 0.9rem; margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+          <span>Budget estimé :</span>
+          <strong>{{ "%.0f"|format(r.estimated_budget or 0) }} €</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; color: var(--primary);">
+          <span>Coût réalisé :</span>
+          <strong>{{ "%.0f"|format(r.computed_cost or 0) }} €</strong>
+        </div>
+      </div>
+
+      {% if r.contractor_name %}
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+        👷 Artisan : <strong>{{ r.contractor_name }}</strong>
+        {% if r.warranty_decennale_expiry %}
+        <div>🛡️ Décennale valide jusqu'au : {{ r.warranty_decennale_expiry }}</div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+      <a href="/renovations/{{ r.id }}" class="btn btn-outline" style="font-size: 0.85rem;">
+        Détails & Factures ({{ r.photos_count }} photos)
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div class="card" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
+    <p>Aucun chantier de travaux enregistré pour ce bien.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Modal Add Renovation -->
+<div id="addRenovModal" class="modal">
+  <div class="modal-content">
+    <div class="card-header">
+      <h3 class="card-title">Nouveau projet de travaux</h3>
+      <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;">✕</button>
+    </div>
+    <form action="/renovations" method="post">
+      <input type="hidden" name="property_id" value="{{ active_property.id }}">
+
+      <div class="form-group">
+        <label class="form-label" for="renov_title">Titre des travaux *</label>
+        <input type="text" id="renov_title" name="title" class="form-control" placeholder="ex: Rénovation salle d'eau, Isolation combles..." required>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="renov_category">Lot / Corps d'état</label>
+          <select id="renov_category" name="category" class="form-control">
+            <option value="Isolation / Énergie">Isolation / Énergie</option>
+            <option value="Chauffage / Plomberie">Chauffage / Plomberie</option>
+            <option value="Électricité">Électricité</option>
+            <option value="Menuiseries / Fenêtres">Menuiseries / Fenêtres</option>
+            <option value="Toiture / Façade">Toiture / Façade</option>
+            <option value="Cuisine / Bain">Cuisine / Bain</option>
+            <option value="Décoration / Peinture">Décoration / Peinture</option>
+            <option value="Général">Général</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="renov_status">Statut</label>
+          <select id="renov_status" name="status_str" class="form-control">
+            <option value="Planifié">Planifié</option>
+            <option value="En cours">En cours</option>
+            <option value="Terminé">Terminé</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="renov_budget">Budget estimatif (€)</label>
+        <input type="number" step="1" id="renov_budget" name="estimated_budget" class="form-control" placeholder="5000">
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="renov_contractor">Nom de l'artisan / Entreprise</label>
+          <input type="text" id="renov_contractor" name="contractor_name" class="form-control" placeholder="SARL Rénovation">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="renov_siret">SIRET Artisan</label>
+          <input type="text" id="renov_siret" name="contractor_siret" class="form-control" placeholder="123 456 789 00012">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="renov_decennale">Date d'échéance garantie décennale</label>
+        <input type="date" id="renov_decennale" name="warranty_decennale_expiry" class="form-control">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="renov_notes">Notes & Cahier des charges</label>
+        <textarea id="renov_notes" name="notes" class="form-control" rows="2" placeholder="Spécifications, matériaux choisis..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem;">
+        <button type="button" data-modal-close class="btn btn-outline">Annuler</button>
+        <button type="submit" class="btn btn-primary">Créer le projet</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

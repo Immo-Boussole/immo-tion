@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Carnet d'Information du Logement (CIL) — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">📜 Carnet d'Information du Logement (CIL)</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem;">
+      {% if active_property %}
+      Dossier de conformité et de valorisation pour <strong>{{ active_property.name }}</strong> (art. L. 126-35-2 du CCH)
+      {% else %}
+      Sélectionnez un bien pour générer son carnet.
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div>
+    <a href="/cil/{{ active_property.id }}/export" class="btn btn-primary" style="gap: 0.5rem;">
+      📦 Télécharger l'Archive Complète (ZIP)
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>Veuillez d'abord créer ou sélectionner un bien immobilier.</p>
+</div>
+{% else %}
+
+<div class="card" style="background-color: var(--primary-light); border-left: 4px solid var(--primary); margin-bottom: 2rem;">
+  <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem;">💡 Qu'est-ce que le CIL ?</h2>
+  <p style="font-size: 0.95rem; line-height: 1.6;">
+    Le <strong>Carnet d'Information du Logement</strong> rassemble l'ensemble des éléments attestant des travaux d'amélioration de la performance énergétique, des plans du logement, des notices des équipements et de l'historique de maintenance. 
+    En cas de revente ou de succession, ce dossier certifié est remis au notaire et au futur acquéreur pour prouver la valeur et le bon entretien du bien.
+  </p>
+</div>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-title">Chantiers & Rénovations</div>
+    <div class="kpi-value">{{ summary.renovations_count or 0 }}</div>
+    <div class="kpi-subtext">Lots répertoriés avec devis/factures</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Interventions d'Entretien</div>
+    <div class="kpi-value">{{ summary.maintenance_logs_count or 0 }}</div>
+    <div class="kpi-subtext">Historique d'entretien documenté</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Équipements & Garanties</div>
+    <div class="kpi-value">{{ summary.inventory_count or 0 }}</div>
+    <div class="kpi-subtext">Appareils et fiches techniques</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">Documents Scannés</div>
+    <div class="kpi-value">{{ summary.documents_count or 0 }}</div>
+    <div class="kpi-subtext">Plans, actes et diagnostics joints</div>
+  </div>
+</div>
+
+<div class="card" style="text-align: center; padding: 3rem 1.5rem;">
+  <div style="font-size: 3rem; margin-bottom: 1rem;">📦</div>
+  <h2 style="font-size: 1.35rem; margin-bottom: 0.5rem;">Export Officiel en 1 Clic</h2>
+  <p style="color: var(--text-muted); max-width: 600px; margin: 0 auto 1.5rem;">
+    L'archive ZIP générée inclut le récapitulatif structuré (JSON & Markdown), l'ensemble des pièces jointes classées par catégorie, les coordonnées des artisans ayant réalisé des travaux et les attestations décennales.
+  </p>
+  <a href="/cil/{{ active_property.id }}/export" class="btn btn-primary" style="padding: 0.75rem 1.5rem; font-size: 1rem;">
+    📥 Télécharger le dossier CIL certifié (.zip)
+  </a>
+</div>
+
+{% endif %}
+{% endblock %}
