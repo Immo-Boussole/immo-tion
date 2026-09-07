@@ -167,6 +167,60 @@ def test_profile_and_admin_pages():
     assert "adminBridgeToken" in admin_res.text
 
 
+def test_admin_user_creation_and_duplicate_prevention():
+    """Verify user creation, duplicate error handling, and self-deletion prevention."""
+    # 1. GET /admin/users/create redirects to /admin/settings
+    get_res = client.get("/admin/users/create", follow_redirects=False)
+    assert get_res.status_code == 303
+    assert get_res.headers["location"] == "/admin/settings"
+
+    # 2. Create user with short username -> error redirect
+    short_res = client.post(
+        "/admin/users/create",
+        data={"username": "ab", "password": "password123", "role": "user"},
+        follow_redirects=False,
+    )
+    assert short_res.status_code == 303
+    assert "error=" in short_res.headers["location"]
+
+    # 3. Create a valid user -> success redirect
+    create_res = client.post(
+        "/admin/users/create",
+        data={"username": "testagent", "password": "agentpassword123", "role": "user", "email": "agent@test.com"},
+        follow_redirects=False,
+    )
+    assert create_res.status_code == 303
+    assert "success=" in create_res.headers["location"]
+
+    # 4. Attempt to create the same user again -> handles UNIQUE constraint and redirects with error (no 500!)
+    dup_res = client.post(
+        "/admin/users/create",
+        data={"username": "testagent", "password": "differentpass123", "role": "user"},
+        follow_redirects=False,
+    )
+    assert dup_res.status_code == 303
+    assert "error=" in dup_res.headers["location"]
+    assert "existe" in dup_res.headers["location"]
+
+    # 5. Prevent deleting logged-in admin
+    conn = get_db_connection()
+    try:
+        admin_user = conn.execute("SELECT id FROM users WHERE username = 'superadmin'").fetchone()
+        agent_user = conn.execute("SELECT id FROM users WHERE username = 'testagent'").fetchone()
+    finally:
+        conn.close()
+
+    self_del_res = client.post(f"/admin/users/{admin_user['id']}/delete", follow_redirects=False)
+    assert self_del_res.status_code == 303
+    assert "error=" in self_del_res.headers["location"]
+
+    # 6. Delete testagent user -> success
+    del_res = client.post(f"/admin/users/{agent_user['id']}/delete", follow_redirects=False)
+    assert del_res.status_code == 303
+    assert "success=" in del_res.headers["location"]
+
+
+
 def teardown_module():
     """Clean up users and properties so the development database remains ready for setup."""
     conn = get_db_connection()

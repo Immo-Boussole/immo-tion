@@ -2,9 +2,11 @@
 
 import os
 import platform
+import sqlite3
 import sys
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, Form, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.auth import admin_required, hash_password
@@ -23,6 +25,8 @@ router = APIRouter(prefix="/admin", tags=["Administration"], dependencies=[Depen
 async def admin_settings_page(request: Request):
     """Render administration and settings dashboard."""
     bridge_token = get_bridge_api_token()
+    success = request.query_params.get("success")
+    error = request.query_params.get("error")
 
     # System metrics
     db_path = settings.DB_PATH
@@ -51,8 +55,8 @@ async def admin_settings_page(request: Request):
             "bridge_token": bridge_token,
             "system_info": system_info,
             "users": users,
-            "success": None,
-            "error": None,
+            "success": success,
+            "error": error,
         },
     )
 
@@ -61,6 +65,15 @@ async def admin_settings_page(request: Request):
 async def regenerate_token(request: Request):
     """Regenerate the Bridge API token."""
     new_token = regenerate_bridge_api_token()
+    return RedirectResponse(
+        url="/admin/settings?success=" + quote("Le jeton Bridge a été régénéré avec succès."),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
+
+@router.get("/users/create")
+async def get_create_user():
+    """Redirect accidental direct GET requests on user creation back to settings."""
     return RedirectResponse(url="/admin/settings", status_code=status.HTTP_303_SEE_OTHER)
 
 
@@ -73,10 +86,22 @@ async def create_user(
     email: Optional[str] = Form(None),
 ):
     """Create a new local user account."""
-    if len(username.strip()) < 3 or len(password) < 6:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Identifiant (min 3 car.) ou mot de passe (min 6 car.) invalide.",
+    clean_username = username.strip()
+    clean_role = role.strip().lower() if role else "user"
+    if clean_role not in ("admin", "user"):
+        clean_role = "user"
+    clean_email = email.strip() if email and email.strip() else None
+
+    if len(clean_username) < 3:
+        return RedirectResponse(
+            url="/admin/settings?error=" + quote("L'identifiant doit contenir au moins 3 caractères."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
+
+    if len(password) < 6:
+        return RedirectResponse(
+            url="/admin/settings?error=" + quote("Le mot de passe doit contenir au moins 6 caractères."),
+            status_code=status.HTTP_303_SEE_OTHER,
         )
 
     pwd_hash, salt = hash_password(password)
@@ -88,12 +113,20 @@ async def create_user(
                 INSERT INTO users (username, password_hash, salt, role, email)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (username.strip(), pwd_hash, salt, role if role in ("admin", "user") else "user", email.strip() if email else None),
+                (clean_username, pwd_hash, salt, clean_role, clean_email),
             )
+    except sqlite3.IntegrityError:
+        return RedirectResponse(
+            url="/admin/settings?error=" + quote(f"L'identifiant '{clean_username}' existe déjà."),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
     finally:
         conn.close()
 
-    return RedirectResponse(url="/admin/settings", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/admin/settings?success=" + quote(f"L'utilisateur '{clean_username}' a été créé avec succès."),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
 
 @router.post("/users/{user_id}/delete")
@@ -102,10 +135,17 @@ async def delete_user(request: Request, user_id: int):
     conn = get_db_connection()
     try:
         user = conn.execute("SELECT username FROM users WHERE id = ?", (user_id,)).fetchone()
-        if user and user["username"] == request.session.get("username"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Vous ne pouvez pas supprimer votre propre compte administrateur.",
+        if not user:
+            return RedirectResponse(
+                url="/admin/settings?error=" + quote("Utilisateur introuvable."),
+                status_code=status.HTTP_303_SEE_OTHER,
+            )
+
+        current_username = request.session.get("username")
+        if user["username"] == current_username:
+            return RedirectResponse(
+                url="/admin/settings?error=" + quote("Vous ne pouvez pas supprimer votre propre compte administrateur."),
+                status_code=status.HTTP_303_SEE_OTHER,
             )
 
         with conn:
@@ -113,4 +153,8 @@ async def delete_user(request: Request, user_id: int):
     finally:
         conn.close()
 
-    return RedirectResponse(url="/admin/settings", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/admin/settings?success=" + quote(f"L'utilisateur '{user['username']}' a été supprimé avec succès."),
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
+
