@@ -71,12 +71,12 @@ class AuthAndSetupMiddleware(BaseHTTPMiddleware):
 
         # If no user exists, enforce redirect to /setup
         if user_count == 0:
-            if not path.startswith("/setup"):
+            if not path.startswith("/setup") and not path.startswith("/setup-admin"):
                 return RedirectResponse(url="/setup", status_code=303)
             return await call_next(request)
 
-        # When users exist, /setup is only allowed for authenticated admin (e.g. step 2)
-        if path.startswith("/setup"):
+        # When users exist, /setup and /setup-admin are only allowed for authenticated admin
+        if path.startswith("/setup") or path.startswith("/setup-admin"):
             if not is_authenticated(request):
                 return RedirectResponse(url="/login", status_code=303)
             return await call_next(request)

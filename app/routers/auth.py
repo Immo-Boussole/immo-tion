@@ -19,9 +19,11 @@ router = APIRouter(tags=["Authentication & Setup"])
 
 @router.get("/setup", response_class=HTMLResponse)
 async def setup_wizard(request: Request, step: int = 1):
-    """First launch setup wizard."""
+    """First launch and post-install setup wizard."""
     user_count = get_user_count()
-    if user_count > 0 and (step == 1 or not is_authenticated(request)):
+    is_admin = is_authenticated(request) and request.session.get("role") == "admin"
+
+    if user_count > 0 and not is_admin:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
 
     bridge_token = get_bridge_api_token()
@@ -32,23 +34,37 @@ async def setup_wizard(request: Request, step: int = 1):
             "step": step,
             "bridge_token": bridge_token,
             "error": None,
+            "is_reconfigure": user_count > 0 and is_admin,
         },
     )
+
+
+@router.get("/setup-admin")
+async def setup_admin_alias(request: Request):
+    """Alias for /setup matching Immo-Boussole conventions."""
+    return RedirectResponse(url="/setup", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 
 
 @router.post("/setup/step1")
 async def setup_step1(
     request: Request,
     username: str = Form(...),
-    password: str = Form(...),
-    confirm_password: str = Form(...),
+    password: str = Form(""),
+    confirm_password: str = Form(""),
     email: Optional[str] = Form(None),
     default_language: str = Form("fr"),
 ):
-    """Process step 1 of setup: create local admin account and set default language."""
+    """Process step 1 of setup: create or update local admin account and set default language."""
     user_count = get_user_count()
-    if user_count > 0:
+    is_admin = is_authenticated(request) and request.session.get("role") == "admin"
+
+    if user_count > 0 and not is_admin:
         return RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+
+    # Reconfiguring as existing admin without changing password
+    if user_count > 0 and is_admin and not password:
+        request.session["lang"] = default_language if default_language in ("fr", "en") else "fr"
+        return RedirectResponse(url="/setup?step=2", status_code=status.HTTP_303_SEE_OTHER)
 
     if len(username.strip()) < 3:
         return templates.TemplateResponse(
@@ -88,13 +104,22 @@ async def setup_step1(
     conn = get_db_connection()
     try:
         with conn:
-            conn.execute(
-                """
-                INSERT INTO users (username, password_hash, salt, role, email)
-                VALUES (?, ?, ?, 'admin', ?)
-                """,
-                (username.strip(), pwd_hash, salt, email.strip() if email else None),
-            )
+            if user_count == 0:
+                conn.execute(
+                    """
+                    INSERT INTO users (username, password_hash, salt, role, email)
+                    VALUES (?, ?, ?, 'admin', ?)
+                    """,
+                    (username.strip(), pwd_hash, salt, email.strip() if email else None),
+                )
+            else:
+                conn.execute(
+                    """
+                    UPDATE users SET username = ?, password_hash = ?, salt = ?, email = ?
+                    WHERE role = 'admin'
+                    """,
+                    (username.strip(), pwd_hash, salt, email.strip() if email else None),
+                )
     finally:
         conn.close()
 

@@ -27,6 +27,10 @@ def test_first_launch_redirects_to_setup():
     assert res.status_code == 303
     assert res.headers["location"] == "/setup"
 
+    res_alias = client.get("/setup-admin")
+    assert res_alias.status_code == 307
+    assert res_alias.headers["location"] == "/setup"
+
     res_setup = client.get("/setup")
     assert res_setup.status_code == 200
     assert "Configuration Initiale" in res_setup.text
@@ -161,3 +165,15 @@ def test_profile_and_admin_pages():
     assert admin_res.status_code == 200
     assert "Administration" in admin_res.text
     assert "adminBridgeToken" in admin_res.text
+
+
+def teardown_module():
+    """Clean up users and properties so the development database remains ready for setup."""
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("DELETE FROM users")
+            conn.execute("DELETE FROM properties")
+            conn.execute("DELETE FROM app_settings")
+    finally:
+        conn.close()

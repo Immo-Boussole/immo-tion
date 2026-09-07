@@ -15,6 +15,7 @@
     "cil": "Home Info File (CIL)",
     "properties": "My Properties",
     "admin_settings": "Administration & Settings",
+    "setup_wizard": "Setup Wizard",
     "profile": "My Profile",
     "logout": "Logout",
     "login": "Login",
@@ -183,7 +184,10 @@
     "db_size": "Database Size",
     "active_users": "User Accounts",
     "users_management": "User Management",
-    "add_user": "Create User"
+    "add_user": "Create User",
+    "setup_wizard_title": "Post-Install Setup Wizard",
+    "setup_wizard_desc": "Re-run the step-by-step wizard to configure your administrator account, first property, and Bridge API token.",
+    "run_setup_wizard": "Launch Wizard"
   },
   "common": {
     "save": "Save",

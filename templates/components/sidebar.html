@@ -69,6 +69,10 @@
       <i class="fa-solid fa-gears"></i>
       <span>{{ t(request, 'nav.admin_settings', 'Administration & Paramètres') }}</span>
     </a>
+    <a href="/setup?step=1" class="nav-link admin-link{% if request.url.path.startswith('/setup') %} active{% endif %}">
+      <i class="fa-solid fa-wand-magic-sparkles"></i>
+      <span>{{ t(request, 'nav.setup_wizard', 'Assistant de configuration') }}</span>
+    </a>
     {% endif %}
   </nav>
 

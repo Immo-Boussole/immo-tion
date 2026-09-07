@@ -15,6 +15,7 @@
     "cil": "Carnet Info Logement (CIL)",
     "properties": "Mes Biens",
     "admin_settings": "Administration & Paramètres",
+    "setup_wizard": "Assistant de configuration",
     "profile": "Mon Profil",
     "logout": "Déconnexion",
     "login": "Connexion",
@@ -183,7 +184,10 @@
     "db_size": "Taille de la base de données",
     "active_users": "Comptes utilisateurs",
     "users_management": "Gestion des Utilisateurs",
-    "add_user": "Créer un utilisateur"
+    "add_user": "Créer un utilisateur",
+    "setup_wizard_title": "Assistant post-installation",
+    "setup_wizard_desc": "Relancez l'assistant pas-à-pas pour configurer votre compte administrateur, votre premier bien et votre jeton Bridge.",
+    "run_setup_wizard": "Lancer l'assistant"
   },
   "common": {
     "save": "Enregistrer",
