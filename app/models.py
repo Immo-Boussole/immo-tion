@@ -140,3 +140,40 @@ class ImmoBoussoleImportPayload(BaseModel):
     contacts: List[dict] = Field(default_factory=list)
     furniture_inventory: List[dict] = Field(default_factory=list)
     seed_tasks: bool = True
+
+
+# ── Users & Authentication ────────────────────────────────────────────
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    email: Optional[str] = None
+    role: str = Field(default="user")
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6)
+
+
+class UserResponse(UserBase):
+    id: int
+    created_at: Optional[str] = None
+
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str = Field(..., min_length=6)
+    confirm_password: str
+
+
+class SetupStep1Payload(BaseModel):
+    username: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=6)
+    confirm_password: str
+    email: Optional[str] = None
+    default_language: str = Field(default="fr")
+
+
+class SetupStep2Payload(BaseModel):
+    property_name: Optional[str] = None
+    property_city: Optional[str] = None
+    property_address: Optional[str] = None
+

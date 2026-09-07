@@ -3,15 +3,13 @@
 from typing import Optional
 from fastapi import APIRouter, Request, Form, UploadFile, File, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
 import shutil
 import uuid
 from app.database import get_db_connection
 from app.config import settings
+from app.templates import templates
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
 @router.get("", response_class=HTMLResponse)

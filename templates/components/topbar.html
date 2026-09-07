@@ -1,0 +1,29 @@
+<header class="topbar">
+  <div class="topbar-left">
+    <button type="button" class="mobile-menu-btn" onclick="document.body.classList.toggle('sidebar-open')" title="Ouvrir le menu" aria-label="Ouvrir le menu">
+      <i class="fa-solid fa-bars"></i>
+    </button>
+    <div class="topbar-title">
+      <h1>{% block page_title %}{{ t(request, 'dashboard.title', 'Tableau de bord') }}{% endblock %}</h1>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    {% if properties is defined and properties|length > 0 %}
+    <div class="property-picker">
+      <i class="fa-solid fa-house-chimney picker-icon"></i>
+      <select id="propertySelector" class="form-control property-select" aria-label="{{ t(request, 'nav.select_property', 'Choisir un bien...') }}">
+        {% for p in properties %}
+        <option value="{{ p.id }}" {% if active_property and active_property.id == p.id %}selected{% endif %}>
+          {{ p.name }}{% if p.city %} ({{ p.city }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    {% endif %}
+
+    <div class="topbar-actions">
+      {% block topbar_actions %}{% endblock %}
+    </div>
+  </div>
+</header>

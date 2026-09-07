@@ -7,13 +7,11 @@ import datetime
 from typing import Optional
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import HTMLResponse, Response
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
 from app.database import get_db_connection
 from app.config import settings
+from app.templates import templates
 
 router = APIRouter(prefix="/cil", tags=["CIL"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
 @router.get("", response_class=HTMLResponse)

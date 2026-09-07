@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="{{ request.session.get('lang', 'fr') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ t(request, 'auth.login_title', 'Connexion à Immo-Tion') }}</title>
+  <link rel="stylesheet" href="/static/css/inter.css">
+  <link rel="stylesheet" href="/static/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="brand-logo">
+          <span class="logo-icon">🏠</span>
+          <span class="logo-title">Immo-Tion</span>
+          <span class="logo-badge">T.I.O.N.</span>
+        </div>
+        <h2>{{ t(request, 'auth.login_title', 'Connexion à Immo-Tion') }}</h2>
+        <p class="auth-subtitle">{{ t(request, 'auth.login_subtitle', 'Veuillez vous identifier pour accéder à votre carnet de vie.') }}</p>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form action="/login" method="post" class="auth-form">
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <div class="form-group">
+          <label for="username">{{ t(request, 'auth.username', 'Identifiant') }}</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-solid fa-user input-icon"></i>
+            <input type="text" id="username" name="username" class="form-control" required autofocus autocomplete="username" placeholder="admin">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">{{ t(request, 'auth.password', 'Mot de passe') }}</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-solid fa-lock input-icon"></i>
+            <input type="password" id="password" name="password" class="form-control" required autocomplete="current-password" placeholder="••••••••">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>{{ t(request, 'auth.login_btn', 'Se connecter') }}</span>
+        </button>
+      </form>
+
+      <div class="auth-footer">
+        <div class="sidebar-lang-selector">
+          <a href="/lang/fr" class="lang-item {% if request.session.get('lang', 'fr') == 'fr' %}active{% endif %}">
+            <span>🇫🇷</span> FR
+          </a>
+          <a href="/lang/en" class="lang-item {% if request.session.get('lang', 'fr') == 'en' %}active{% endif %}">
+            <span>🇬🇧</span> EN
+          </a>
+        </div>
+        <div class="version-label">ver: {{ app_version }}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

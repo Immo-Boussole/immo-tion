@@ -5,14 +5,12 @@ from typing import Optional
 from dateutil.relativedelta import relativedelta
 from fastapi import APIRouter, Request, Form, Response, status, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
 from app.database import get_db_connection
 from app.scheduler import evaluate_task_status
 from app.notifier import generate_ical_feed
+from app.templates import templates
 
 router = APIRouter(prefix="/maintenance", tags=["Maintenance"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
 @router.get("", response_class=HTMLResponse)

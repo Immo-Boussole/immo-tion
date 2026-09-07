@@ -1,50 +1,31 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ request.session.get('lang', 'fr') }}">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Immo-Tion{% endblock %} — Carnet de Vie du Logement</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>{% block title %}Immo-Tion{% endblock %} — {{ t(request, 'app.name', 'Immo-Tion') }}</title>
+  <link rel="stylesheet" href="/static/css/inter.css">
+  <link rel="stylesheet" href="/static/css/fontawesome.min.css">
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
 </head>
 <body>
-  <!-- Main Header & Navigation -->
-  <header class="navbar">
-    <a href="/" class="brand">
-      <span>🏠 Immo-Tion</span>
-      <span class="badge">T.I.O.N.</span>
-    </a>
+  <div class="app-layout">
+    <!-- Left Sidebar -->
+    {% include 'components/sidebar.html' %}
 
-    <nav>
-      <ul class="nav-links">
-        <li><a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">📊 Tableau de bord</a></li>
-        <li><a href="/maintenance{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link {% if '/maintenance' in request.url.path %}active{% endif %}">🔄 Entretien</a></li>
-        <li><a href="/renovations{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link {% if '/renovations' in request.url.path %}active{% endif %}">🛠️ Travaux</a></li>
-        <li><a href="/inventory{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link {% if '/inventory' in request.url.path %}active{% endif %}">📦 Inventaire</a></li>
-        <li><a href="/documents{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link {% if '/documents' in request.url.path %}active{% endif %}">📑 Documents</a></li>
-        <li><a href="/energy{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link {% if '/energy' in request.url.path %}active{% endif %}">⚡ Énergie</a></li>
-        <li><a href="/cil{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link {% if '/cil' in request.url.path %}active{% endif %}">📜 CIL</a></li>
-        <li><a href="/properties" class="nav-link {% if '/properties' in request.url.path %}active{% endif %}">🏡 Mes Biens</a></li>
-      </ul>
-    </nav>
+    <!-- Mobile Backdrop Overlay -->
+    <div id="sidebar-overlay" onclick="document.body.classList.remove('sidebar-open')"></div>
 
-    <div class="header-actions">
-      {% if properties is defined and properties|length > 0 %}
-      <select id="propertySelector" class="form-control" style="width: auto; min-width: 170px;">
-        {% for p in properties %}
-        <option value="{{ p.id }}" {% if active_property and active_property.id == p.id %}selected{% endif %}>
-          🏡 {{ p.name }}
-        </option>
-        {% endfor %}
-      </select>
-      {% endif %}
+    <!-- Main App Container (Topbar + Content) -->
+    <div class="app-main">
+      {% include 'components/topbar.html' %}
+
+      <main class="main-container">
+        {% block content %}{% endblock %}
+      </main>
     </div>
-  </header>
-
-  <!-- Main Content Container -->
-  <main class="main-container">
-    {% block content %}{% endblock %}
-  </main>
+  </div>
 
   <script src="/static/js/app.js"></script>
 </body>

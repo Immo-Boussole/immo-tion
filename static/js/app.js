@@ -1,5 +1,15 @@
-/* ── Immo-Tion Interactive UI Helpers ───────────────────────────────────── */
+/* ── Immo-Tion Interactive UI & Navigation Helpers ──────────────────────── */
 document.addEventListener("DOMContentLoaded", () => {
+  // Mobile sidebar drawer & Escape key listener
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      document.body.classList.remove("sidebar-open");
+      document.querySelectorAll(".modal.active").forEach((modal) => {
+        modal.classList.remove("active");
+      });
+    }
+  });
+
   // Modal open/close handlers
   document.querySelectorAll("[data-modal-open]").forEach((btn) => {
     btn.addEventListener("click", (e) => {

@@ -3,8 +3,29 @@
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.auth import hash_password
+from app.database import get_db_connection, get_bridge_api_token
 
 client = TestClient(app)
+
+
+def setup_module():
+    """Seed test database with an authenticated admin user."""
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("DELETE FROM users")
+            pwd_hash, salt = hash_password("TestPassword123!")
+            conn.execute(
+                "INSERT INTO users (username, password_hash, salt, role) VALUES ('tester', ?, ?, 'admin')",
+                (pwd_hash, salt),
+            )
+    finally:
+        conn.close()
+
+    # Log in test client
+    login_res = client.post("/login", data={"username": "tester", "password": "TestPassword123!"})
+    assert login_res.status_code == 200 or login_res.status_code == 303
 
 
 def test_health_check():
@@ -28,7 +49,7 @@ def test_metadata_acronym():
 
 def test_dashboard_and_pages_render():
     """Verify primary HTML views render successfully."""
-    routes = ["/", "/properties", "/maintenance", "/renovations", "/inventory", "/documents", "/energy", "/cil"]
+    routes = ["/", "/properties", "/maintenance", "/renovations", "/inventory", "/documents", "/energy", "/cil", "/profile", "/admin/settings"]
     for r in routes:
         res = client.get(r)
         assert res.status_code == 200
@@ -80,7 +101,8 @@ def test_property_lifecycle():
 
 
 def test_immo_boussole_bridge_import():
-    """Test importing a property exported by Immo-Boussole."""
+    """Test importing a property exported by Immo-Boussole with Bearer token."""
+    token = get_bridge_api_token()
     payload = {
         "title": "Villa Boussole Importée",
         "address": "42 Rue du Port",
@@ -103,7 +125,11 @@ def test_immo_boussole_bridge_import():
         "seed_tasks": True,
     }
 
-    res = client.post("/api/v1/bridge/import-listing", json=payload)
+    res = client.post(
+        "/api/v1/bridge/import-listing",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+    )
     assert res.status_code == 201
     data = res.json()
     assert data["status"] == "success"

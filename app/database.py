@@ -164,6 +164,24 @@ def init_db(db_path: Optional[Path] = None) -> None:
                 notes TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+
+            -- Users (Comptes utilisateurs et authentification)
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash BLOB NOT NULL,
+                salt BLOB NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                email TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- App Settings (Paramètres globaux & jetons)
+            CREATE TABLE IF NOT EXISTS app_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
             """)
     finally:
         conn.close()
@@ -242,3 +260,68 @@ def seed_standard_maintenance_tasks(property_id: int, db_path: Optional[Path] = 
                 )
     finally:
         conn.close()
+
+
+def get_setting(key: str, default: Optional[str] = None, db_path: Optional[Path] = None) -> Optional[str]:
+    """Retrieve an application setting value from app_settings table."""
+    conn = get_db_connection(db_path)
+    try:
+        row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+        return row["value"] if row else default
+    finally:
+        conn.close()
+
+
+def set_setting(key: str, value: str, db_path: Optional[Path] = None) -> None:
+    """Store or update an application setting in app_settings table."""
+    conn = get_db_connection(db_path)
+    try:
+        with conn:
+            conn.execute(
+                """
+                INSERT INTO app_settings (key, value, updated_at)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+                """,
+                (key, value),
+            )
+    finally:
+        conn.close()
+
+
+def get_user_count(db_path: Optional[Path] = None) -> int:
+    """Return the total number of registered users."""
+    conn = get_db_connection(db_path)
+    try:
+        row = conn.execute("SELECT COUNT(*) AS cnt FROM users").fetchone()
+        return row["cnt"] if row else 0
+    finally:
+        conn.close()
+
+
+def get_user_by_username(username: str, db_path: Optional[Path] = None) -> Optional[sqlite3.Row]:
+    """Return user row by username or None if not found."""
+    conn = get_db_connection(db_path)
+    try:
+        return conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_bridge_api_token(db_path: Optional[Path] = None) -> str:
+    """Return active Bridge API token, generating one if not yet initialized."""
+    token = get_setting("bridge_api_token", db_path=db_path)
+    if not token:
+        import secrets
+        token = secrets.token_hex(24)
+        set_setting("bridge_api_token", token, db_path=db_path)
+    return token
+
+
+def regenerate_bridge_api_token(db_path: Optional[Path] = None) -> str:
+    """Generate and store a brand-new Bridge API token, invalidating the previous one."""
+    import secrets
+    token = secrets.token_hex(24)
+    set_setting("bridge_api_token", token, db_path=db_path)
+    return token
+

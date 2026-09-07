@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="{{ request.session.get('lang', 'fr') }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ t(request, 'setup.title', 'Configuration Initiale — Immo-Tion') }}</title>
+  <link rel="stylesheet" href="/static/css/inter.css">
+  <link rel="stylesheet" href="/static/css/fontawesome.min.css">
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>">
+</head>
+<body class="auth-page">
+  <div class="auth-container" style="max-width: 580px;">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="brand-logo">
+          <span class="logo-icon">🏠</span>
+          <span class="logo-title">Immo-Tion</span>
+          <span class="logo-badge">T.I.O.N.</span>
+        </div>
+        <h2>{{ t(request, 'setup.title', 'Configuration Initiale') }}</h2>
+        <p class="auth-subtitle">
+          {% if step == 1 %}
+            {{ t(request, 'setup.step1_desc', 'Configurez le compte administrateur local et la langue par défaut.') }}
+          {% else %}
+            {{ t(request, 'setup.step2_desc', 'Déclarez votre premier bien immobilier et récupérez votre jeton Bridge.') }}
+          {% endif %}
+        </p>
+      </div>
+
+      <!-- Stepper Indicator -->
+      <div class="setup-stepper">
+        <div class="step-item {% if step == 1 %}active{% else %}completed{% endif %}">
+          <div class="step-circle">{% if step > 1 %}<i class="fa-solid fa-check"></i>{% else %}1{% endif %}</div>
+          <div class="step-label">Compte Admin</div>
+        </div>
+        <div class="step-line {% if step > 1 %}completed{% endif %}"></div>
+        <div class="step-item {% if step == 2 %}active{% endif %}">
+          <div class="step-circle">2</div>
+          <div class="step-label">Premier Bien & Bridge</div>
+        </div>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-danger" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      {% if step == 1 %}
+      <!-- STEP 1: Admin Account Creation -->
+      <form action="/setup/step1" method="post" class="auth-form">
+        <div class="form-group">
+          <label for="username">{{ t(request, 'setup.admin_username', 'Identifiant administrateur') }} *</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-solid fa-user-shield input-icon"></i>
+            <input type="text" id="username" name="username" class="form-control" required minlength="3" placeholder="admin" autofocus>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="password">{{ t(request, 'setup.admin_password', 'Mot de passe') }} *</label>
+            <div class="input-icon-wrapper">
+              <i class="fa-solid fa-lock input-icon"></i>
+              <input type="password" id="password" name="password" class="form-control" required minlength="6" placeholder="••••••••">
+            </div>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label for="confirm_password">{{ t(request, 'setup.admin_password_confirm', 'Confirmation') }} *</label>
+            <div class="input-icon-wrapper">
+              <i class="fa-solid fa-lock-open input-icon"></i>
+              <input type="password" id="confirm_password" name="confirm_password" class="form-control" required minlength="6" placeholder="••••••••">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">{{ t(request, 'setup.admin_email', 'Adresse email (optionnel)') }}</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-solid fa-envelope input-icon"></i>
+            <input type="email" id="email" name="email" class="form-control" placeholder="admin@immo-tion.local">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="default_language">{{ t(request, 'setup.default_language', 'Langue par défaut') }}</label>
+          <div class="input-icon-wrapper">
+            <i class="fa-solid fa-globe input-icon"></i>
+            <select id="default_language" name="default_language" class="form-control">
+              <option value="fr" selected>🇫🇷 Français (Recommandé)</option>
+              <option value="en">🇬🇧 English</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">
+          <span>{{ t(request, 'setup.next_btn', 'Continuer vers l\'Étape 2') }}</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+
+      {% else %}
+      <!-- STEP 2: Optional Property & Bridge Token -->
+      <form action="/setup/step2" method="post" class="auth-form">
+        <div class="bridge-token-card">
+          <div class="bridge-token-header">
+            <i class="fa-solid fa-key" style="color: var(--accent);"></i>
+            <strong>{{ t(request, 'setup.bridge_token_label', 'Jeton API Bridge (Immo-Boussole)') }}</strong>
+          </div>
+          <p class="bridge-token-help">
+            {{ t(request, 'setup.bridge_token_help', 'Copiez ce jeton dans votre instance Immo-Boussole pour activer le transfert direct en 1 clic lors de vos acquisitions.') }}
+          </p>
+          <div class="token-input-group">
+            <input type="text" id="bridgeTokenInput" class="form-control token-field" value="{{ bridge_token }}" readonly>
+            <button type="button" class="btn btn-secondary btn-copy" onclick="copyBridgeToken()">
+              <i class="fa-regular fa-copy"></i>
+              <span id="copyBtnText">{{ t(request, 'common.copy', 'Copier') }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="divider-text">
+          <span>{{ t(request, 'setup.first_property_name', 'Premier bien immobilier (Optionnel)') }}</span>
+        </div>
+
+        <div class="form-group">
+          <label for="property_name">{{ t(request, 'properties.name', 'Nom du bien') }}</label>
+          <input type="text" id="property_name" name="property_name" class="form-control" placeholder="ex: Maison Principale, Appartement Lyon">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group" style="flex: 1;">
+            <label for="property_city">{{ t(request, 'properties.city', 'Ville') }}</label>
+            <input type="text" id="property_city" name="property_city" class="form-control" placeholder="ex: Lyon, Annecy, Paris...">
+          </div>
+          <div class="form-group" style="flex: 2;">
+            <label for="property_address">{{ t(request, 'properties.address', 'Adresse') }}</label>
+            <input type="text" id="property_address" name="property_address" class="form-control" placeholder="ex: 12 rue de la République">
+          </div>
+        </div>
+
+        <div class="setup-actions">
+          <button type="submit" class="btn btn-primary btn-block">
+            <i class="fa-solid fa-check"></i>
+            <span>{{ t(request, 'setup.finish_btn', 'Finaliser & Accéder au tableau de bord') }}</span>
+          </button>
+        </div>
+      </form>
+      {% endif %}
+
+      <div class="auth-footer">
+        <div class="version-label">Immo-Tion ver: {{ app_version }}</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function copyBridgeToken() {
+      const input = document.getElementById('bridgeTokenInput');
+      if (!input) return;
+      navigator.clipboard.writeText(input.value).then(() => {
+        const btnText = document.getElementById('copyBtnText');
+        if (btnText) {
+          const original = btnText.innerText;
+          btnText.innerText = 'Copié !';
+          setTimeout(() => { btnText.innerText = original; }, 2000);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

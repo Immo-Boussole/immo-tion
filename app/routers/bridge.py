@@ -1,6 +1,7 @@
 """Bridge router providing seamless integration and 1-click import from Immo-Boussole."""
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from app.auth import verify_bearer_token
 from app.models import ImmoBoussoleImportPayload
 from app.database import get_db_connection, seed_standard_maintenance_tasks
 
@@ -8,7 +9,10 @@ router = APIRouter(prefix="/api/v1/bridge", tags=["Immo-Boussole Bridge"])
 
 
 @router.post("/import-listing", status_code=status.HTTP_201_CREATED)
-async def import_listing_from_immo_boussole(payload: ImmoBoussoleImportPayload):
+async def import_listing_from_immo_boussole(
+    payload: ImmoBoussoleImportPayload,
+    token: str = Depends(verify_bearer_token),
+):
     """Import an acquired real estate property directly from Immo-Boussole."""
     conn = get_db_connection()
     try:

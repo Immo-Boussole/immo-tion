@@ -1,5 +1,6 @@
 """Immo-Tion Test Runner & Pre-Push Validation Suite."""
 
+import json
 import sys
 import subprocess
 from pathlib import Path
@@ -16,7 +17,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 def validate_jinja_templates() -> bool:
     """Validate syntax of all Jinja2 templates in templates/."""
-    print("🔍 [1/4] Validating Jinja2 templates syntax...")
+    print("🔍 [1/5] Validating Jinja2 templates syntax...")
     templates_dir = PROJECT_ROOT / "templates"
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(str(templates_dir)))
 
@@ -36,9 +37,51 @@ def validate_jinja_templates() -> bool:
     return False
 
 
+def validate_i18n_parity() -> bool:
+    """Validate that locales/fr.json and locales/en.json have identical key structures."""
+    print("🔍 [2/5] Validating i18n locale keys parity (FR/EN)...")
+    fr_path = PROJECT_ROOT / "locales" / "fr.json"
+    en_path = PROJECT_ROOT / "locales" / "en.json"
+
+    if not fr_path.exists() or not en_path.exists():
+        print("❌ Missing locales/fr.json or locales/en.json")
+        return False
+
+    def extract_keys(d, prefix=""):
+        keys = set()
+        for k, v in d.items():
+            full_k = f"{prefix}.{k}" if prefix else k
+            if isinstance(v, dict):
+                keys.update(extract_keys(v, full_k))
+            else:
+                keys.add(full_k)
+        return keys
+
+    with open(fr_path, "r", encoding="utf-8") as f:
+        fr_data = json.load(f)
+    with open(en_path, "r", encoding="utf-8") as f:
+        en_data = json.load(f)
+
+    fr_keys = extract_keys(fr_data)
+    en_keys = extract_keys(en_data)
+
+    missing_in_en = fr_keys - en_keys
+    missing_in_fr = en_keys - fr_keys
+
+    if missing_in_en:
+        print(f"❌ Keys present in FR but missing in EN: {missing_in_en}")
+        return False
+    if missing_in_fr:
+        print(f"❌ Keys present in EN but missing in FR: {missing_in_fr}")
+        return False
+
+    print(f"✅ Exact i18n parity verified across {len(fr_keys)} translation keys.")
+    return True
+
+
 def validate_documentation_parity() -> bool:
     """Ensure README.md and README.fr.md exist and cover the T.I.O.N. acronym."""
-    print("🔍 [2/4] Validating documentation and T.I.O.N. acronym parity...")
+    print("🔍 [3/5] Validating documentation and T.I.O.N. acronym parity...")
     readme_en = PROJECT_ROOT / "README.md"
     readme_fr = PROJECT_ROOT / "README.fr.md"
 
@@ -65,7 +108,7 @@ def validate_documentation_parity() -> bool:
 
 def run_pytest_suite() -> bool:
     """Execute pytest test suite."""
-    print("🔍 [3/4] Running pytest suite...")
+    print("🔍 [4/5] Running pytest suite...")
     cmd = [sys.executable, "-m", "pytest", "tests"]
     result = subprocess.run(cmd, cwd=str(PROJECT_ROOT))
     if result.returncode == 0:
@@ -77,7 +120,7 @@ def run_pytest_suite() -> bool:
 
 def cleanup_workspace():
     """Ensure no test database files or root temporary artifacts remain."""
-    print("🧹 [4/4] Cleaning up workspace...")
+    print("🧹 [5/5] Cleaning up workspace...")
     for pattern in ["test_*.db", "*.db-shm", "*.db-wal"]:
         for f in PROJECT_ROOT.glob(pattern):
             try:
@@ -93,6 +136,7 @@ def main():
 
     success = (
         validate_jinja_templates()
+        and validate_i18n_parity()
         and validate_documentation_parity()
         and run_pytest_suite()
     )

@@ -1,0 +1,106 @@
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <a href="/" class="logo">
+      <span class="logo-icon">🏠</span>
+      <span class="logo-text">Immo-Tion</span>
+      <span class="logo-badge">T.I.O.N.</span>
+    </a>
+    <button type="button" class="sidebar-close-btn" onclick="document.body.classList.remove('sidebar-open')" title="Fermer le menu" aria-label="Fermer le menu">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  {% if active_property %}
+  <div class="sidebar-active-property">
+    <div class="prop-label">{{ t(request, 'nav.active_property', 'Bien actif') }}</div>
+    <div class="prop-name" title="{{ active_property.name }}">🏡 {{ active_property.name }}</div>
+    {% if active_property.city %}<div class="prop-city">{{ active_property.city }}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="sidebar-section-title">{{ t(request, 'nav.navigation', 'Navigation') }}</div>
+  <nav class="sidebar-nav">
+    <a href="/" class="nav-link{% if request.url.path == '/' %} active{% endif %}">
+      <i class="fa-solid fa-house"></i>
+      <span>{{ t(request, 'nav.dashboard', 'Tableau de bord') }}</span>
+    </a>
+
+    <a href="/maintenance{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/maintenance') %} active{% endif %}">
+      <i class="fa-solid fa-rotate"></i>
+      <span>{{ t(request, 'nav.maintenance', 'Entretien & Maintenance') }}</span>
+    </a>
+
+    <a href="/renovations{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/renovations') %} active{% endif %}">
+      <i class="fa-solid fa-screwdriver-wrench"></i>
+      <span>{{ t(request, 'nav.renovations', 'Travaux & Chantiers') }}</span>
+    </a>
+
+    <a href="/inventory{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/inventory') %} active{% endif %}">
+      <i class="fa-solid fa-boxes-stacked"></i>
+      <span>{{ t(request, 'nav.inventory', 'Inventaire') }}</span>
+    </a>
+
+    <a href="/documents{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/documents') %} active{% endif %}">
+      <i class="fa-solid fa-folder-open"></i>
+      <span>{{ t(request, 'nav.documents', 'Coffre-fort Documents') }}</span>
+    </a>
+
+    <a href="/energy{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/energy') %} active{% endif %}">
+      <i class="fa-solid fa-bolt"></i>
+      <span>{{ t(request, 'nav.energy', 'Énergie & Consommations') }}</span>
+    </a>
+
+    <a href="/cil{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/cil') %} active{% endif %}">
+      <i class="fa-solid fa-file-lines"></i>
+      <span>{{ t(request, 'nav.cil', 'Carnet Info Logement (CIL)') }}</span>
+    </a>
+
+    <hr class="sidebar-divider">
+
+    <a href="/properties" class="nav-link{% if request.url.path.startswith('/properties') %} active{% endif %}">
+      <i class="fa-solid fa-building-user"></i>
+      <span>{{ t(request, 'nav.properties', 'Mes Biens') }}</span>
+    </a>
+
+    {% if request.session.get('role') == 'admin' %}
+    <hr class="sidebar-divider">
+    <div class="sidebar-section-title">Administration</div>
+    <a href="/admin/settings" class="nav-link admin-link{% if request.url.path.startswith('/admin') %} active{% endif %}">
+      <i class="fa-solid fa-gears"></i>
+      <span>{{ t(request, 'nav.admin_settings', 'Administration & Paramètres') }}</span>
+    </a>
+    {% endif %}
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="/profile" class="nav-link{% if request.url.path == '/profile' %} active{% endif %}">
+      <i class="fa-solid fa-user-gear"></i>
+      <span>{{ t(request, 'nav.profile', 'Mon Profil') }}</span>
+    </a>
+    <a href="/logout" class="nav-link logout-link">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      <span>{{ t(request, 'nav.logout', 'Déconnexion') }}</span>
+    </a>
+
+    {% if request.session.get('username') %}
+    <div class="sidebar-user-badge">
+      <span class="user-label">{{ t(request, 'nav.connected_as', 'Connecté :') }}</span>
+      <span class="user-name">{{ request.session.get('username') }}</span>
+      <span class="user-role">({{ request.session.get('role') }})</span>
+    </div>
+    {% endif %}
+
+    <div class="sidebar-lang-selector">
+      <a href="/lang/fr" class="lang-item {% if request.session.get('lang', 'fr') == 'fr' %}active{% endif %}" title="Passer en français">
+        <span>🇫🇷</span> FR
+      </a>
+      <a href="/lang/en" class="lang-item {% if request.session.get('lang', 'fr') == 'en' %}active{% endif %}" title="Switch to English">
+        <span>🇬🇧</span> EN
+      </a>
+    </div>
+
+    <div class="sidebar-version" title="Version de l'application">
+      ver: {{ app_version }}
+    </div>
+  </div>
+</aside>

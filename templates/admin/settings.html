@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t(request, 'admin.title', 'Administration & Paramètres') }}{% endblock %}
+{% block page_title %}{{ t(request, 'admin.title', 'Administration & Paramètres') }}{% endblock %}
+
+{% block content %}
+<div class="content-wrapper">
+  {% if success %}
+  <div class="alert alert-success">
+    <i class="fa-solid fa-circle-check"></i>
+    <span>{{ success }}</span>
+  </div>
+  {% endif %}
+
+  {% if error %}
+  <div class="alert alert-danger">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <span>{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Bridge API Token Section -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-satellite-dish"></i>
+        <span>{{ t(request, 'admin.bridge_section', 'Intégration Immo-Boussole (Bridge API)') }}</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-muted mb-3">
+        {{ t(request, 'admin.bridge_desc', 'Permet à vos instances Immo-Boussole d\'exporter instantanément les biens achetés vers Immo-Tion.') }}
+      </p>
+
+      <div class="bridge-token-control">
+        <div class="token-input-group">
+          <input type="text" id="adminBridgeToken" class="form-control token-field font-mono" value="{{ bridge_token }}" readonly>
+          <button type="button" class="btn btn-secondary" onclick="copyAdminToken()">
+            <i class="fa-regular fa-copy"></i>
+            <span id="copyAdminBtnText">{{ t(request, 'common.copy', 'Copier') }}</span>
+          </button>
+        </div>
+
+        <form action="/admin/token/regenerate" method="post" onsubmit="return confirm('{{ t(request, 'admin.regenerate_confirm') }}');">
+          <button type="submit" class="btn btn-danger">
+            <i class="fa-solid fa-arrows-rotate"></i>
+            <span>{{ t(request, 'admin.regenerate_token', 'Régénérer le jeton') }}</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2-cols mb-4">
+    <!-- System Metrics -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="fa-solid fa-server"></i>
+          <span>{{ t(request, 'admin.system_health', 'Santé & Environnement') }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="info-row">
+          <span class="info-label">{{ t(request, 'admin.python_version', 'Version Python') }}</span>
+          <span class="info-value font-mono">{{ system_info.python_version }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Environnement</span>
+          <span class="badge badge-accent">{{ system_info.app_env }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Port HTTP</span>
+          <span class="info-value">{{ system_info.app_port }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">{{ t(request, 'admin.db_size', 'Taille Base de Données') }}</span>
+          <span class="info-value">{{ system_info.db_size }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Biens enregistrés</span>
+          <span class="info-value">{{ system_info.properties_count }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Utilisateurs actifs</span>
+          <span class="info-value">{{ system_info.users_count }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create User Form -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <i class="fa-solid fa-user-plus"></i>
+          <span>{{ t(request, 'admin.add_user', 'Créer un utilisateur') }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <form action="/admin/users/create" method="post">
+          <div class="form-group">
+            <label for="username">{{ t(request, 'auth.username', 'Identifiant') }} *</label>
+            <input type="text" id="username" name="username" class="form-control" required minlength="3">
+          </div>
+
+          <div class="form-group">
+            <label for="password">{{ t(request, 'auth.password', 'Mot de passe') }} *</label>
+            <input type="password" id="password" name="password" class="form-control" required minlength="6">
+          </div>
+
+          <div class="form-row" style="display: flex; gap: 1rem;">
+            <div class="form-group" style="flex: 1;">
+              <label for="role">Rôle</label>
+              <select id="role" name="role" class="form-control">
+                <option value="user" selected>Utilisateur standard</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex: 2;">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" class="form-control" placeholder="utilisateur@exemple.fr">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">
+            <i class="fa-solid fa-plus"></i>
+            <span>{{ t(request, 'admin.add_user', 'Créer l\'utilisateur') }}</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users List -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-users"></i>
+        <span>{{ t(request, 'admin.users_management', 'Gestion des Utilisateurs') }}</span>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>{{ t(request, 'auth.username', 'Identifiant') }}</th>
+            <th>Rôle</th>
+            <th>Email</th>
+            <th>Date de création</th>
+            <th style="text-align: right;">{{ t(request, 'common.actions', 'Actions') }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td class="font-bold">{{ u.username }}</td>
+            <td>
+              <span class="badge {% if u.role == 'admin' %}badge-accent{% else %}badge-secondary{% endif %}">
+                {{ u.role }}
+              </span>
+            </td>
+            <td>{{ u.email or '—' }}</td>
+            <td>{{ u.created_at }}</td>
+            <td style="text-align: right;">
+              {% if u.username != request.session.get('username') %}
+              <form action="/admin/users/{{ u.id }}/delete" method="post" style="display: inline;" onsubmit="return confirm('Confirmer la suppression définitive de cet utilisateur ?');">
+                <button type="submit" class="btn btn-danger btn-sm" title="{{ t(request, 'common.delete', 'Supprimer') }}">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </form>
+              {% else %}
+              <span class="badge badge-subtle">Connecté</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  function copyAdminToken() {
+    const input = document.getElementById('adminBridgeToken');
+    if (!input) return;
+    navigator.clipboard.writeText(input.value).then(() => {
+      const btnText = document.getElementById('copyAdminBtnText');
+      if (btnText) {
+        const orig = btnText.innerText;
+        btnText.innerText = 'Copié !';
+        setTimeout(() => { btnText.innerText = orig; }, 2000);
+      }
+    });
+  }
+</script>
+{% endblock %}

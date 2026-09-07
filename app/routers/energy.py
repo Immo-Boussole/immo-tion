@@ -3,12 +3,10 @@
 from typing import Optional
 from fastapi import APIRouter, Request, Form, HTTPException, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
 from app.database import get_db_connection
+from app.templates import templates
 
 router = APIRouter(prefix="/energy", tags=["Energy"])
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent.parent / "templates"))
 
 
 @router.get("", response_class=HTMLResponse)
