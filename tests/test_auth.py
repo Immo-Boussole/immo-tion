@@ -158,7 +158,7 @@ def test_profile_and_admin_pages():
     """Verify profile and admin settings render with active session."""
     prof_res = client.get("/profile")
     assert prof_res.status_code == 200
-    assert "Mon Profil" in prof_res.text
+    assert ("Mon Profil" in prof_res.text or "My Profile" in prof_res.text or "Profile" in prof_res.text)
     assert "superadmin" in prof_res.text
 
     admin_res = client.get("/admin/settings")

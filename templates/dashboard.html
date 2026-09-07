@@ -186,5 +186,163 @@
   </div>
 </div>
 
+<!-- Full-Width Horizontal Timeline Block -->
+{% if timeline %}
+<div class="timeline-card">
+  <div class="timeline-header">
+    <div class="timeline-title-area">
+      <h2>
+        <i class="fa-solid fa-timeline"></i>
+        <span>{{ t(request, 'timeline.title', 'Frise Chronologique du Logement') }}</span>
+      </h2>
+      <span class="timeline-meta-badge">
+        {{ timeline.total_events }} {{ t(request, 'timeline.total_events', 'événements') }}
+      </span>
+    </div>
+
+    <div class="timeline-controls">
+      <!-- Category Filters -->
+      <div class="timeline-filters">
+        {% for cat in timeline.categories %}
+        <button type="button" class="timeline-filter-btn {% if cat.id == 'all' %}active{% endif %}" data-cat="{{ cat.id }}" onclick="filterTimeline('{{ cat.id }}')">
+          <i class="{{ cat.icon }}"></i>
+          <span>{{ cat.label }}</span>
+        </button>
+        {% endfor %}
+      </div>
+
+      <!-- Navigation & Today buttons -->
+      <div class="timeline-nav-btns">
+        <button type="button" class="timeline-nav-btn" onclick="scrollTimeline(-320)" title="{{ t(request, 'timeline.scroll_left', 'Défiler vers la gauche') }}">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+        <button type="button" class="timeline-today-btn" onclick="scrollToToday()" title="{{ t(request, 'timeline.back_to_today', 'Revenir à Aujourd\'hui') }}">
+          <i class="fa-solid fa-location-crosshairs"></i>
+          <span>{{ t(request, 'timeline.now', 'Aujourd\'hui') }}</span>
+        </button>
+        <button type="button" class="timeline-nav-btn" onclick="scrollTimeline(320)" title="{{ t(request, 'timeline.scroll_right', 'Défiler vers la droite') }}">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Horizontal Scrollable Track Viewport -->
+  <div class="timeline-viewport" id="timelineViewport">
+    <div class="timeline-track" id="timelineTrack">
+      {% for item in timeline.events %}
+        {% if item.type == 'now' %}
+          <!-- Beacon "Maintenant / Aujourd'hui" -->
+          <div class="timeline-now-beacon" id="timelineNowNode" data-cat="all">
+            <span class="timeline-now-pill">{{ t(request, 'timeline.now', 'Aujourd\'hui') }}</span>
+            <span class="timeline-now-date">{{ item.formatted_date }}</span>
+            <span class="timeline-now-sub">{{ t(request, 'timeline.now_subtext', 'Repère actuel') }}</span>
+          </div>
+        {% elif item.type == 'gap' %}
+          <!-- Compressed Inactivity Gap -->
+          <div class="timeline-gap-node" data-cat="gap">
+            <div class="timeline-gap-badge" title="Période sans activité ({{ item.days }} jours)">
+              <i class="fa-solid fa-ellipsis"></i>
+              <span>{{ item.label }}</span>
+              <i class="fa-solid fa-ellipsis"></i>
+            </div>
+          </div>
+        {% else %}
+          <!-- Event Card -->
+          <a href="{{ item.url }}" class="timeline-card-item {% if item.is_past %}is-past{% else %}is-future{% endif %}" data-cat="{{ item.category }}" title="{{ item.title }} • {{ item.relative_label }}">
+            <div class="timeline-card-header">
+              <span class="timeline-item-date">{{ item.formatted_date }}</span>
+              <span class="badge {{ item.badge_class }}">{{ item.badge_text }}</span>
+            </div>
+            <div class="timeline-item-title">
+              <i class="{{ item.icon }}" style="color: var(--accent); margin-right: 0.3rem;"></i>
+              {{ item.title }}
+            </div>
+            <div class="timeline-item-sub">{{ item.subtitle }}</div>
+            <div class="timeline-card-footer">
+              <span>{{ item.relative_label }}</span>
+              {% if item.amount %}
+              <span class="timeline-amount">{{ item.amount }}</span>
+              {% endif %}
+            </div>
+          </a>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+  function scrollToToday(smooth = true) {
+    const viewport = document.getElementById('timelineViewport');
+    const nowNode = document.getElementById('timelineNowNode');
+    if (!viewport || !nowNode) return;
+
+    const viewportRect = viewport.getBoundingClientRect();
+    const nodeRect = nowNode.getBoundingClientRect();
+    const targetScroll = viewport.scrollLeft + (nodeRect.left - viewportRect.left) - (viewportRect.width / 2) + (nodeRect.width / 2);
+
+    viewport.scrollTo({
+      left: Math.max(0, targetScroll),
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+  }
+
+  function scrollTimeline(offset) {
+    const viewport = document.getElementById('timelineViewport');
+    if (viewport) {
+      viewport.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  }
+
+  function filterTimeline(cat) {
+    document.querySelectorAll('.timeline-filter-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-cat') === cat);
+    });
+
+    document.querySelectorAll('.timeline-card-item').forEach(card => {
+      const itemCat = card.getAttribute('data-cat');
+      if (cat === 'all' || itemCat === cat) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+
+    const nowNode = document.getElementById('timelineNowNode');
+    if (nowNode) nowNode.style.display = 'flex';
+
+    setTimeout(() => scrollToToday(true), 50);
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => scrollToToday(false), 150);
+
+    const slider = document.getElementById('timelineViewport');
+    if (slider) {
+      let isDown = false;
+      let startX;
+      let scrollLeft;
+
+      slider.addEventListener('mousedown', (e) => {
+        isDown = true;
+        startX = e.pageX - slider.offsetLeft;
+        scrollLeft = slider.scrollLeft;
+      });
+      slider.addEventListener('mouseleave', () => { isDown = false; });
+      slider.addEventListener('mouseup', () => { isDown = false; });
+      slider.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - slider.offsetLeft;
+        const walk = (x - startX) * 1.5;
+        slider.scrollLeft = scrollLeft - walk;
+      });
+    }
+  });
+</script>
+{% endif %}
+
 {% endif %}
 {% endblock %}
+

@@ -204,5 +204,23 @@
     "optional": "optionnel",
     "copy": "Copier",
     "copied": "Copié !"
+  },
+  "timeline": {
+    "title": "Frise Chronologique du Logement",
+    "subtitle": "Historique des interventions passées, repère actuel et prochaines échéances",
+    "now": "Aujourd'hui",
+    "now_subtext": "Repère actuel",
+    "back_to_today": "Revenir à Aujourd'hui",
+    "filter_all": "Tous",
+    "filter_maintenance": "Entretien",
+    "filter_renovation": "Travaux",
+    "filter_inventory": "Équipements",
+    "filter_property": "Logement",
+    "empty": "Aucun événement enregistré sur ce bien.",
+    "scroll_left": "Défiler vers la gauche",
+    "scroll_right": "Défiler vers la droite",
+    "total_events": "événements",
+    "past": "Passé",
+    "future": "Futur"
   }
 }

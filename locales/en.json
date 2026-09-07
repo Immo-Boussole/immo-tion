@@ -204,5 +204,23 @@
     "optional": "optional",
     "copy": "Copy",
     "copied": "Copied!"
+  },
+  "timeline": {
+    "title": "Home Timeline",
+    "subtitle": "Past intervention history, current milestone, and upcoming deadlines",
+    "now": "Today",
+    "now_subtext": "Current milestone",
+    "back_to_today": "Back to Today",
+    "filter_all": "All",
+    "filter_maintenance": "Maintenance",
+    "filter_renovation": "Works",
+    "filter_inventory": "Equipment",
+    "filter_property": "Property",
+    "empty": "No recorded events for this property.",
+    "scroll_left": "Scroll left",
+    "scroll_right": "Scroll right",
+    "total_events": "events",
+    "past": "Past",
+    "future": "Future"
   }
 }

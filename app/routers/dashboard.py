@@ -5,6 +5,7 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import HTMLResponse
 from app.database import get_db_connection
 from app.scheduler import get_dashboard_summary
+from app.timeline import get_property_timeline
 from app.templates import templates
 
 router = APIRouter(tags=["Dashboard"])
@@ -29,6 +30,7 @@ async def dashboard_view(request: Request, property_id: Optional[int] = None):
             property_id = active_property["id"]
 
         summary = get_dashboard_summary(property_id=property_id)
+        timeline = get_property_timeline(property_id=property_id) if property_id else None
 
         return templates.TemplateResponse(
             request=request,
@@ -37,7 +39,9 @@ async def dashboard_view(request: Request, property_id: Optional[int] = None):
                 "properties": properties,
                 "active_property": active_property,
                 "summary": summary,
+                "timeline": timeline,
             },
         )
     finally:
         conn.close()
+
