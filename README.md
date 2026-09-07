@@ -81,7 +81,7 @@ Immo-Tion seamlessly connects with **Immo-Boussole**:
 
 ## 🐳 Quick Start with Docker
 
-### Using Docker Compose (Recommended)
+### 1. Standard Local Deployment
 
 ```yaml
 version: "3.8"
@@ -105,6 +105,123 @@ Run:
 docker compose up -d
 ```
 Access the application at `http://localhost:8085`.
+
+---
+
+## 🛡️ Cloudflare Tunnel Exposure (`cloudflared`) & Zero Trust Security
+
+Just like **Immo-Boussole**, **Immo-Tion** is natively designed to be exposed securely on the public Internet without opening any inbound ports on your router, firewall, or NAT.
+
+### 🌐 Architectural Principles
+
+- **Zero Open Ports**: The `cloudflared` daemon establishes an outbound encrypted tunnel directly to Cloudflare edge data centers. No external router port forwarding is needed.
+- **Automatic SSL/TLS**: Cloudflare handles SSL termination, TLS 1.3 encryption, and valid certificates automatically.
+- **Isolated Docker Bridge**: The application container (`immo-tion`) does not expose any host ports (`ports:` block omitted). External visitors can only reach Immo-Tion through the Cloudflare Tunnel.
+
+### 📋 Deployment with Cloudflared
+
+Two dedicated Compose manifests are provided:
+1. **`docker-compose.hub.cloudflared.yml` (Recommended)**: Pulls the pre-built, multi-architecture image from Docker Hub (`wikijm/immo-tion:latest`).
+2. **`docker-compose.cloudflared.yml`**: Compiles the application locally from the Dockerfile.
+
+#### Stack Example (`docker-compose.hub.cloudflared.yml`)
+
+```yaml
+version: "3.8"
+
+services:
+  immo-tion:
+    image: wikijm/immo-tion:latest
+    container_name: immo-tion-app
+    restart: always
+    networks:
+      - immo-tion-net
+    environment:
+      - APP_PORT=8085
+      - DATA_DIR=/data
+      - APP_ENV=production
+      - REQUIRED_HEADERS="X-Origin-Verify:YOUR_SECRET_TOKEN,CF-Ray"
+      - REQUIRED_HEADERS_EXEMPT_LOCALHOST=true
+    volumes:
+      - tion-data:/data
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel run
+    networks:
+      - immo-tion-net
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+
+networks:
+  immo-tion-net:
+    name: immo-tion-net
+    driver: bridge
+
+volumes:
+  tion-data:
+    name: immo-tion-data
+```
+
+---
+
+### 🚀 Step-by-Step Cloudflare Zero Trust Setup
+
+#### 1. Create a Cloudflare Tunnel
+1. Log in to the [Cloudflare Zero Trust Dashboard](https://one.dash.cloudflare.com/).
+2. Navigate to **Networks** > **Tunnels** and click **Create a tunnel**.
+3. Select **Cloudflared** as the connector and name it (e.g. `immo-tion-tunnel`).
+4. Copy the installation token value (`TUNNEL_TOKEN`) for deployment.
+
+#### 2. Configure Public Hostname Routing
+1. In the tunnel configuration, go to the **Public Hostname** tab and click **Add a public hostname**.
+2. Set your custom subdomain and domain:
+   - **Subdomain**: `tion` (or your preferred prefix)
+   - **Domain**: `your-domain.com`
+3. Configure the service connection:
+   - **Type**: `HTTP`
+   - **URL**: `immo-tion:8085` (matches the Docker service name and internal port)
+4. Click **Save hostname**.
+
+#### 3. Enforce Origin Protection (Anti-Bypass Header Verification)
+To ensure traffic cannot bypass Cloudflare's WAF and reach your origin directly:
+1. In Cloudflare Tunnel settings > Public Hostname > **Additional application settings** > **HTTP Headers**:
+   - Add header `X-Origin-Verify` with a private secret token (e.g. `X-Origin-Verify: your_custom_secret_key`).
+2. In Immo-Tion's `.env` or Docker stack environment:
+   ```ini
+   REQUIRED_HEADERS="X-Origin-Verify:your_custom_secret_key,CF-Ray"
+   REQUIRED_HEADERS_EXEMPT_LOCALHOST=true
+   ```
+3. Any direct HTTP request lacking this valid signature will be immediately rejected with HTTP `403 Forbidden`. Internal Docker health probes (`/health`) and localhost callers remain exempt.
+
+#### 4. Zero Trust Access Control (Strongly Recommended)
+Place Immo-Tion behind Cloudflare Access to restrict logins exclusively to authorized family members or collaborators:
+1. In Cloudflare Zero Trust, navigate to **Access** > **Applications** > **Add an application**.
+2. Select **Self-hosted**, name it `Immo-Tion Portal`, and specify `tion.your-domain.com`.
+3. Create an **Allow Policy** restricted by email addresses (OTP PIN sent via email) or OAuth identity providers (Google, GitHub, Microsoft).
+
+---
+
+## ⚙️ Configuration & Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `APP_PORT` | `8085` | Internal HTTP listening port for Uvicorn. |
+| `APP_ENV` | `production` | Deployment mode (`production` or `development`). |
+| `DATA_DIR` | `/data` (or `./data`) | Persistent storage path for the SQLite database and uploads. |
+| `SECRET_KEY` | *(default)* | Secret key used for signing session cookies. |
+| `REQUIRED_HEADERS` | *(empty)* | Comma-separated list of required headers (`Header-Name` or `Header-Name:Value`) to enforce Cloudflare origin verification. |
+| `REQUIRED_HEADERS_EXEMPT_LOCALHOST` | `true` | When `true`, loopback callers (`127.0.0.1`, `::1`) are exempt from header enforcement. |
+| `TUNNEL_TOKEN` | *(empty)* | Cloudflare Zero Trust tunnel authentication token for `cloudflared`. |
+| `SMTP_HOST` | *(optional)* | SMTP server address for email notifications. |
+| `SMTP_PORT` | `587` | SMTP port (e.g. 587 for STARTTLS, 465 for SSL). |
+| `SMTP_USER` | *(optional)* | SMTP username/address. |
+| `SMTP_PASSWORD` | *(optional)* | SMTP password or app-specific password. |
+| `SMTP_FROM` | `notifications@immo-tion.local` | Sender address for automated notifications. |
+| `SMTP_USE_TLS` | `true` | Enable STARTTLS for SMTP connections. |
+| `WEBHOOK_URLS` | *(empty)* | Comma-separated list of webhook URLs for Home Assistant, Discord, or Telegram. |
 
 ---
 

@@ -1,5 +1,7 @@
 """Main FastAPI application entrypoint for Immo-Tion."""
 
+import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
@@ -92,10 +94,65 @@ class AuthAndSetupMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+logger = logging.getLogger("immo-tion.security")
+
+
+class HeaderEnforcementMiddleware(BaseHTTPMiddleware):
+    """Enforces the presence and validity of required HTTP headers (e.g. from Cloudflare Tunnel).
+
+    Protects against direct origin bypass when exposed behind Cloudflared or a reverse proxy.
+    Exempts internal healthchecks, CORS preflights, and optionally localhost callers.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        required_headers = settings.parsed_required_headers
+        if not required_headers:
+            return await call_next(request)
+
+        # 1. Exempt CORS preflight (OPTIONS)
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
+        # 2. Exempt container health check endpoints
+        path = request.url.path
+        if path in ("/health", "/api/health"):
+            return await call_next(request)
+
+        # 3. Exempt localhost / loopback calls if configured
+        if settings.REQUIRED_HEADERS_EXEMPT_LOCALHOST:
+            client_host = request.client.host if request.client else ""
+            if client_host in ("127.0.0.1", "::1", "localhost", "testclient"):
+                return await call_next(request)
+
+        # 4. Enforce presence and expected values
+        client_ip = request.client.host if request.client else "unknown"
+        for req_header, expected_val in required_headers.items():
+            actual_val = request.headers.get(req_header)
+            if actual_val is None:
+                logger.warning(
+                    f"[Security] Blocked direct request from {client_ip} to {path}: missing required header '{req_header}'"
+                )
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Access Denied: Direct origin connection prohibited"},
+                )
+            if expected_val is not None:
+                if not secrets.compare_digest(actual_val, expected_val):
+                    logger.warning(
+                        f"[Security] Blocked direct request from {client_ip} to {path}: invalid value for header '{req_header}'"
+                    )
+                    return JSONResponse(
+                        status_code=403,
+                        content={"detail": "Access Denied: Direct origin connection prohibited"},
+                    )
+
+        return await call_next(request)
+
+
 # Inner middleware: Auth access control
 app.add_middleware(AuthAndSetupMiddleware)
 
-# Outer middleware: SessionMiddleware executes first, populating request.session
+# Outer middleware: SessionMiddleware executes before AuthAndSetupMiddleware
 app.add_middleware(
     SessionMiddleware,
     secret_key=settings.SECRET_KEY,
@@ -104,6 +161,9 @@ app.add_middleware(
     same_site="lax",
     https_only=False,
 )
+
+# Outermost middleware: Cloudflare Tunnel Header enforcement executes FIRST
+app.add_middleware(HeaderEnforcementMiddleware)
 
 
 # Include authentication, profile and administration routers

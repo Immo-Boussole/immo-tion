@@ -81,7 +81,7 @@ Immo-Tion s'interconnecte naturellement avec **Immo-Boussole** :
 
 ## 🐳 Démarrage Rapide avec Docker
 
-### Utilisation de Docker Compose (Recommandé)
+### 1. Déploiement Local Standard
 
 ```yaml
 version: "3.8"
@@ -105,6 +105,123 @@ Lancer :
 docker compose up -d
 ```
 L'application est accessible sur `http://localhost:8085`.
+
+---
+
+## 🛡️ Exposition via Cloudflare Tunnel (`cloudflared`) & Sécurité Zero Trust
+
+Tout comme **Immo-Boussole**, **Immo-Tion** est nativement conçu pour être exposé sur Internet en toute sécurité, sans ouvrir le moindre port entrant sur votre box, routeur ou pare-feu (pas de redirection NAT/PAT).
+
+### 🌐 Principes d'Architecture
+
+- **Zéro Port Ouvert** : Le connecteur `cloudflared` établit un tunnel sortant chiffré vers les centres de données Cloudflare. Aucune ouverture de port public n'est requise.
+- **SSL/TLS Automatique** : Cloudflare assure la terminaison HTTPS, le chiffrement TLS 1.3 et le renouvellement automatique des certificats.
+- **Réseau Docker Isolé** : Le conteneur applicatif (`immo-tion`) n'expose aucun port sur la machine hôte (bloc `ports:` omis). L'application n'est accessible que via le réseau Docker interne ou le Tunnel Cloudflare.
+
+### 📋 Déploiement avec Cloudflared
+
+Deux fichiers Compose prêts à l'emploi sont fournis :
+1. **`docker-compose.hub.cloudflared.yml` (Recommandé)** : Télécharge l'image multi-architecture pré-construite depuis Docker Hub (`wikijm/immo-tion:latest`).
+2. **`docker-compose.cloudflared.yml`** : Compile l'application localement depuis le Dockerfile.
+
+#### Exemple de Stack (`docker-compose.hub.cloudflared.yml`)
+
+```yaml
+version: "3.8"
+
+services:
+  immo-tion:
+    image: wikijm/immo-tion:latest
+    container_name: immo-tion-app
+    restart: always
+    networks:
+      - immo-tion-net
+    environment:
+      - APP_PORT=8085
+      - DATA_DIR=/data
+      - APP_ENV=production
+      - REQUIRED_HEADERS="X-Origin-Verify:VOTRE_SECRET_PRIVE,CF-Ray"
+      - REQUIRED_HEADERS_EXEMPT_LOCALHOST=true
+    volumes:
+      - tion-data:/data
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel run
+    networks:
+      - immo-tion-net
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+
+networks:
+  immo-tion-net:
+    name: immo-tion-net
+    driver: bridge
+
+volumes:
+  tion-data:
+    name: immo-tion-data
+```
+
+---
+
+### 🚀 Configuration Étape par Étape (Cloudflare Zero Trust)
+
+#### 1. Créer le Tunnel Cloudflare
+1. Connectez-vous sur le [Tableau de bord Cloudflare Zero Trust](https://one.dash.cloudflare.com/).
+2. Rendez-vous dans **Networks** > **Tunnels** et cliquez sur **Create a tunnel**.
+3. Choisissez **Cloudflared** comme connecteur et donnez un nom à votre tunnel (ex: `immo-tion-tunnel`).
+4. Copiez la valeur du jeton d'installation (`TUNNEL_TOKEN`) pour votre déploiement.
+
+#### 2. Configurer le Nom d'Hôte Public (Public Hostname)
+1. Dans la configuration du tunnel, allez dans l'onglet **Public Hostname** et cliquez sur **Add a public hostname**.
+2. Renseignez votre sous-domaine et nom de domaine :
+   - **Sous-domaine** : `tion` (ou le préfixe de votre choix)
+   - **Domaine** : `votre-domaine.com`
+3. Configurez la cible de service :
+   - **Type** : `HTTP`
+   - **URL** : `immo-tion:8085` (correspond au nom de service Docker et au port interne)
+4. Cliquez sur **Save hostname**.
+
+#### 3. Activer la Protection d'Origine (Vérification Anti-Contournement)
+Pour vous assurer que le trafic ne contourne jamais le pare-feu Cloudflare :
+1. Dans Cloudflare Zero Trust > Tunnels > Éditer votre nom d'hôte > **Additional application settings** > **HTTP Headers** :
+   - Ajoutez l'en-tête `X-Origin-Verify` avec un secret privé (ex: `X-Origin-Verify: mon_secret_personnalise`).
+2. Dans le fichier `.env` d'Immo-Tion ou dans les variables d'environnement de votre stack Docker :
+   ```ini
+   REQUIRED_HEADERS="X-Origin-Verify:mon_secret_personnalise,CF-Ray"
+   REQUIRED_HEADERS_EXEMPT_LOCALHOST=true
+   ```
+3. Toute requête directe ne disposant pas de ces en-têtes valides sera rejetée avec un code HTTP `403 Forbidden`. Les sondes de santé internes Docker (`/health`) et les appels locaux restent autorisés.
+
+#### 4. Contrôle d'Accès Zero Trust (Fortement Conseillé)
+Placez Immo-Tion derrière un portail captif Cloudflare Access afin que seules les personnes autorisées puissent voir l'application :
+1. Dans Cloudflare Zero Trust, allez dans **Access** > **Applications** > **Add an application**.
+2. Choisissez **Self-hosted**, nommez l'application `Portail Immo-Tion`, et entrez `tion.votre-domaine.com`.
+3. Créez une règle **Allow** restreinte par adresses e-mail (code PIN OTP reçu par e-mail) ou fournisseur d'identité (Google, GitHub, Microsoft).
+
+---
+
+## ⚙️ Configuration & Variables d'Environnement
+
+| Variable | Défaut | Description |
+|---|---|---|
+| `APP_PORT` | `8085` | Port HTTP d'écoute interne pour Uvicorn. |
+| `APP_ENV` | `production` | Environnement d'exécution (`production` ou `development`). |
+| `DATA_DIR` | `/data` (ou `./data`) | Chemin persistant de stockage pour SQLite et les fichiers téléversés. |
+| `SECRET_KEY` | *(défaut)* | Clé secrète de signature des sessions de navigation. |
+| `REQUIRED_HEADERS` | *(vide)* | Liste d'en-têtes requis (`Nom-Header` ou `Nom-Header:Valeur`) pour la vérification d'origine Cloudflare. |
+| `REQUIRED_HEADERS_EXEMPT_LOCALHOST` | `true` | Si `true`, exempte les requêtes en boucle locale (`127.0.0.1`, `::1`) de la vérification des en-têtes. |
+| `TUNNEL_TOKEN` | *(vide)* | Jeton d'authentification du tunnel Cloudflare Zero Trust pour `cloudflared`. |
+| `SMTP_HOST` | *(optionnel)* | Adresse du serveur SMTP pour les notifications par e-mail. |
+| `SMTP_PORT` | `587` | Port SMTP (ex: 587 pour STARTTLS, 465 pour SSL). |
+| `SMTP_USER` | *(optionnel)* | Identifiant ou adresse expéditrice SMTP. |
+| `SMTP_PASSWORD` | *(optionnel)* | Mot de passe SMTP ou mot de passe d'application. |
+| `SMTP_FROM` | `notifications@immo-tion.local` | Adresse expéditrice affichée pour les alertes automatiques. |
+| `SMTP_USE_TLS` | `true` | Active la négociation STARTTLS pour les échanges SMTP. |
+| `WEBHOOK_URLS` | *(vide)* | Liste d'URLs séparées par des virgules pour Home Assistant, Discord ou Telegram. |
 
 ---
 

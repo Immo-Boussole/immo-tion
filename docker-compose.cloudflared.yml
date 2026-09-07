@@ -1,0 +1,80 @@
+---
+# 🐳 Dedicated Docker Compose for Cloudflared + Immo-Tion
+# This file is designed for secure deployment without exposed ports.
+# All external communication passes through the Cloudflare Tunnel.
+
+name: immo-tion-cloudflared
+
+services:
+
+  # ── Main Application ─────────────────────────────────────────────────────────
+  immo-tion:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - APP_VERSION=${APP_VERSION:-latest}
+    image: immo-tion-app:${APP_VERSION:-latest}
+    container_name: immo-tion-${APP_ENV:-prod}-app
+    restart: always
+    networks:
+      - immo-tion-net
+    environment:
+      - APP_PORT=8085
+      - DATA_DIR=/data
+      - APP_ENV=${APP_ENV:-production}
+      - SECRET_KEY=${SECRET_KEY:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - WEBHOOK_URLS=${WEBHOOK_URLS:-}
+      # Enforce Cloudflare Tunnel headers to block direct origin bypass (e.g. "CF-Ray,X-Origin-Verify:secret")
+      - REQUIRED_HEADERS=${REQUIRED_HEADERS:-}
+      - REQUIRED_HEADERS_EXEMPT_LOCALHOST=${REQUIRED_HEADERS_EXEMPT_LOCALHOST:-true}
+    volumes:
+      # Data persistence (SQLite database, documents, uploads)
+      - tion-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+  # NOTE: No "ports:" block is present.
+  # The application is only accessible via the internal Docker network or the Tunnel.
+
+  # ── Cloudflare Tunnel Connector ──────────────────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-${APP_ENV:-prod}
+    restart: always
+    command: tunnel run
+    networks:
+      - immo-tion-net
+    environment:
+      # Zero Trust tunnel token from Cloudflare Dashboard
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN:-YOUR_TOKEN_HERE}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# ── Internal Network ─────────────────────────────────────────────────────────
+networks:
+  immo-tion-net:
+    name: immo-tion-${APP_ENV:-prod}-net
+    driver: bridge
+
+# ── Persistent Volumes ───────────────────────────────────────────────────────
+volumes:
+  tion-data:
+    name: immo-tion-${APP_ENV:-prod}-data
