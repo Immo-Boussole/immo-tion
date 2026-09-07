@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t(request, 'taxes.title', 'Fiscalité & Taxes') }} — Immo-Tion{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title"><i class="fa-solid fa-landmark" style="color: var(--accent); margin-right: 0.5rem;"></i>{{ t(request, 'taxes.title', 'Fiscalité & Taxes Foncières') }}</h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.25rem;">
+      {% if active_property %}
+      {{ t(request, 'taxes.subtitle', 'Suivi des taxes locales (foncière, TEOM, habitation) et analyse pluriannuelle') }} — <strong>{{ active_property.name }}</strong>
+      {% else %}
+      {{ t(request, 'taxes.select_property_hint', 'Sélectionnez un bien pour consulter sa fiscalité.') }}
+      {% endif %}
+    </p>
+  </div>
+  {% if active_property %}
+  <div>
+    <button type="button" class="btn btn-primary" data-modal-open="addTaxModal">
+      <i class="fa-solid fa-plus"></i> {{ t(request, 'taxes.add_tax', 'Ajouter un avis') }}
+    </button>
+  </div>
+  {% endif %}
+</div>
+
+{% if success %}
+<div class="alert alert-success" style="margin-bottom: 1.25rem;">
+  <i class="fa-solid fa-circle-check"></i> {{ success }}
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger" style="margin-bottom: 1.25rem;">
+  <i class="fa-solid fa-circle-exclamation"></i> {{ error }}
+</div>
+{% endif %}
+
+{% if not active_property %}
+<div class="card" style="text-align: center; padding: 3rem;">
+  <p>{{ t(request, 'dashboard.no_property', 'Veuillez d\'abord créer ou sélectionner un bien immobilier.') }}</p>
+</div>
+{% else %}
+
+<!-- KPI Cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-title">{{ t(request, 'taxes.kpi_total_year', 'Total taxes') }} ({{ latest_year }})</div>
+    <div class="kpi-value">
+      {{ "%.0f"|format(latest_year_total) }} <span style="font-size: 1rem; color: var(--text-muted);">€</span>
+    </div>
+    <div class="kpi-subtext">
+      {% if latest_year_teom > 0 %}
+      dont {{ "%.0f"|format(latest_year_teom) }} € de TEOM
+      {% else %}
+      Avis d'imposition enregistrés
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">{{ t(request, 'taxes.kpi_yoy', 'Évolution vs N-1') }}</div>
+    <div class="kpi-value" style="color: {% if yoy_pct is not none and yoy_pct > 0 %}var(--danger){% elif yoy_pct is not none and yoy_pct < 0 %}var(--success){% else %}var(--text){% endif %};">
+      {% if yoy_pct is not none %}
+        {% if yoy_pct > 0 %}+{% endif %}{{ yoy_pct }}%
+      {% else %}
+        <span style="font-size: 1.2rem; color: var(--text-muted);">N/A</span>
+      {% endif %}
+    </div>
+    <div class="kpi-subtext">
+      {% if yoy_pct is not none %}
+        {% if yoy_diff > 0 %}+{% endif %}{{ "%.0f"|format(yoy_diff) }} € par rapport à l'année précédente
+      {% else %}
+        Une seule année enregistrée
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">{{ t(request, 'taxes.kpi_teom', 'TEOM Récupérable') }}</div>
+    <div class="kpi-value" style="color: #f59e0b;">
+      {{ "%.0f"|format(latest_year_teom) }} <span style="font-size: 1rem; color: var(--text-muted);">€</span>
+    </div>
+    <div class="kpi-subtext">Charge récupérable auprès du locataire</div>
+  </div>
+
+  <div class="kpi-card">
+    <div class="kpi-title">{{ t(request, 'taxes.kpi_next_due', 'Prochaine échéance') }}</div>
+    {% if next_due_tax %}
+    <div class="kpi-value" style="font-size: 1.4rem; color: {% if next_due_tax.status == 'À payer' %}var(--warning){% else %}var(--accent){% endif %};">
+      {{ next_due_tax.due_date }}
+    </div>
+    <div class="kpi-subtext">{{ next_due_tax.tax_type }} : {{ "%.0f"|format(next_due_tax.amount) }} € ({{ next_due_tax.status }})</div>
+    {% else %}
+    <div class="kpi-value" style="font-size: 1.3rem; color: var(--success);">
+      <i class="fa-solid fa-check"></i> À jour
+    </div>
+    <div class="kpi-subtext">Aucun paiement en attente</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Pluriannual Evolution Chart -->
+{% if chart_data|length > 0 %}
+<div class="tax-chart-container">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+    <h3 style="font-size: 1rem; font-weight: 700; color: var(--text); margin: 0;">
+      <i class="fa-solid fa-chart-simple" style="color: var(--accent); margin-right: 0.4rem;"></i>
+      {{ t(request, 'taxes.chart_title', 'Évolution Pluriannuelle des Taxes Locales') }}
+    </h3>
+    <span style="font-size: 0.8rem; color: var(--text-muted);">
+      {{ chart_data|length }} année(s) documentée(s)
+    </span>
+  </div>
+
+  <div class="tax-chart-bars">
+    {% for bar in chart_data %}
+    <div class="tax-bar-col">
+      <span class="tax-bar-val">{{ "%.0f"|format(bar.total) }} €</span>
+      <div class="tax-bar-track" style="height: {{ bar.pct_height }}%;">
+        {% if bar.teom > 0 and bar.total > 0 %}
+        {% set teom_pct = (bar.teom / bar.total * 100)|round|int %}
+        <div class="tax-bar-teom" style="height: {{ teom_pct }}%;" title="TEOM : {{ '%.0f'|format(bar.teom) }} €"></div>
+        <div class="tax-bar-total" style="height: {{ 100 - teom_pct }}%;" title="Part foncière : {{ '%.0f'|format(bar.total - bar.teom) }} €"></div>
+        {% else %}
+        <div class="tax-bar-total" style="height: 100%;" title="Total : {{ '%.0f'|format(bar.total) }} €"></div>
+        {% endif %}
+      </div>
+      <span class="tax-bar-label">{{ bar.year }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="tax-legend">
+    <div class="tax-legend-item">
+      <div class="tax-legend-color" style="background: var(--accent);"></div>
+      <span>Taxe Foncière / Autres</span>
+    </div>
+    <div class="tax-legend-item">
+      <div class="tax-legend-color" style="background: #f59e0b;"></div>
+      <span>TEOM (Ordures Ménagères récupérables)</span>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Tax Notices Table -->
+<div class="card">
+  <div class="card-header">
+    <h2 class="card-title">
+      <i class="fa-solid fa-list-check" style="color: var(--accent); margin-right: 0.4rem;"></i>
+      {{ t(request, 'taxes.history_title', 'Historique des Avis et Échéances') }}
+    </h2>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>{{ t(request, 'taxes.tax_year', 'Année') }}</th>
+          <th>{{ t(request, 'taxes.tax_type', 'Type de taxe') }}</th>
+          <th>{{ t(request, 'taxes.amount', 'Montant total') }}</th>
+          <th>{{ t(request, 'taxes.teom_amount', 'Dont TEOM') }}</th>
+          <th>{{ t(request, 'taxes.due_date', 'Échéance') }}</th>
+          <th>{{ t(request, 'taxes.status', 'Statut') }}</th>
+          <th>{{ t(request, 'taxes.reference_number', 'Réf. avis') }}</th>
+          <th>{{ t(request, 'taxes.notice_pdf', 'Avis') }}</th>
+          <th style="text-align: right;">{{ t(request, 'common.actions', 'Actions') }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in taxes %}
+        <tr>
+          <td><strong>{{ tx.tax_year }}</strong></td>
+          <td>{{ tx.tax_type }}</td>
+          <td><strong>{{ "%.2f"|format(tx.amount) }} €</strong></td>
+          <td>
+            {% if tx.teom_amount and tx.teom_amount > 0 %}
+            <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">
+              {{ "%.2f"|format(tx.teom_amount) }} €
+            </span>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td>{{ tx.due_date }}</td>
+          <td>
+            {% if tx.status == 'Payé' %}
+            <span class="badge badge-success"><i class="fa-solid fa-check"></i> Payé</span>
+            {% elif tx.status == 'Mensualisé' %}
+            <span class="badge badge-accent"><i class="fa-solid fa-calendar-days"></i> Mensualisé</span>
+            {% else %}
+            <span class="badge badge-warning"><i class="fa-solid fa-clock"></i> À payer</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tx.reference_number %}
+            <code style="font-size: 0.8rem;">{{ tx.reference_number }}</code>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tx.document_path %}
+            <a href="{{ tx.document_path }}" target="_blank" class="btn btn-outline" style="min-height: 30px; padding: 0.2rem 0.6rem; font-size: 0.8rem;" title="Consulter l'avis PDF">
+              <i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i> PDF
+            </a>
+            {% else %}
+            <span style="color: var(--text-muted);">-</span>
+            {% endif %}
+          </td>
+          <td style="text-align: right;">
+            <form action="/taxes/{{ tx.id }}/delete" method="post" onsubmit="return confirm('{{ t(request, 'taxes.delete_confirm', 'Êtes-vous sûr de vouloir supprimer cet avis d\'imposition ?') }}');" style="display: inline;">
+              <input type="hidden" name="property_id" value="{{ active_property.id }}">
+              <button type="submit" class="btn btn-outline" style="min-height: 32px; padding: 0.25rem 0.5rem; font-size: 0.8rem; color: var(--danger);" title="{{ t(request, 'common.delete', 'Supprimer') }}">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 2.5rem;">
+            <i class="fa-solid fa-landmark" style="font-size: 2rem; margin-bottom: 0.75rem; display: block; opacity: 0.3;"></i>
+            {{ t(request, 'taxes.no_taxes', 'Aucun avis de taxe enregistré pour ce bien.') }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal Add Tax Record -->
+<div id="addTaxModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="card-title">
+        <i class="fa-solid fa-landmark" style="color: var(--accent); margin-right: 0.4rem;"></i>
+        {{ t(request, 'taxes.add_tax', 'Ajouter un avis d\'imposition') }}
+      </h3>
+      <button type="button" data-modal-close class="btn btn-outline" style="min-height: 32px; padding: 0.2rem 0.5rem;" aria-label="Fermer">✕</button>
+    </div>
+    <form action="/taxes" method="post" enctype="multipart/form-data">
+      <div class="modal-body">
+        <input type="hidden" name="property_id" value="{{ active_property.id }}">
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="tax_year">{{ t(request, 'taxes.tax_year', 'Année d\'imposition') }} *</label>
+            <input type="number" id="tax_year" name="tax_year" class="form-control" value="{{ current_year }}" min="2000" max="2100" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="tax_type">{{ t(request, 'taxes.tax_type', 'Type de taxe') }} *</label>
+            <select id="tax_type" name="tax_type" class="form-control" required>
+              <option value="Taxe Foncière" selected>Taxe Foncière (bâtie)</option>
+              <option value="TEOM">TEOM seule (Ordures Ménagères)</option>
+              <option value="Taxe d'Habitation">Taxe d'Habitation (résidence secondaire)</option>
+              <option value="Taxe Logements Vacants">Taxe sur les logements vacants (TLV)</option>
+              <option value="Autre Taxe">Autre taxe locale</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="amount">{{ t(request, 'taxes.amount', 'Montant total (€)') }} *</label>
+            <input type="number" step="0.01" id="amount" name="amount" class="form-control" placeholder="1250.00" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="teom_amount">{{ t(request, 'taxes.teom_amount', 'Dont TEOM récupérable (€)') }}</label>
+            <input type="number" step="0.01" id="teom_amount" name="teom_amount" class="form-control" placeholder="185.00">
+            <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.2rem;">Part récupérable auprès du locataire</small>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label class="form-label" for="due_date">{{ t(request, 'taxes.due_date', 'Date limite de paiement') }} *</label>
+            <input type="date" id="due_date" name="due_date" class="form-control" value="{{ current_year }}-10-15" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="status">{{ t(request, 'taxes.status', 'Statut de paiement') }} *</label>
+            <select id="status" name="status" class="form-control" required>
+              <option value="Payé" selected>{{ t(request, 'taxes.status_paid', 'Payé') }}</option>
+              <option value="À payer">{{ t(request, 'taxes.status_to_pay', 'À payer') }}</option>
+              <option value="Mensualisé">{{ t(request, 'taxes.status_monthly', 'Mensualisé') }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reference_number">{{ t(request, 'taxes.reference_number', 'N° de rôle / Référence de l\'avis') }}</label>
+          <input type="text" id="reference_number" name="reference_number" class="form-control" placeholder="Ex: 24 75 001 123456">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="document">{{ t(request, 'taxes.notice_pdf', 'Avis d\'imposition (PDF / Scan)') }}</label>
+          <input type="file" id="document" name="document" class="form-control" accept=".pdf,image/*">
+          <small style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.2rem;">Sera automatiquement archivé dans le coffre-fort documentaire.</small>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notes">{{ t(request, 'common.notes', 'Notes / Observations') }}</label>
+          <textarea id="notes" name="notes" class="form-control" rows="2" placeholder="Ex: Augmentation du taux communal de 3%"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" data-modal-close class="btn btn-outline">{{ t(request, 'common.cancel', 'Annuler') }}</button>
+        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> {{ t(request, 'common.save', 'Enregistrer') }}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -271,6 +271,49 @@ def get_property_timeline(property_id: int) -> Dict[str, Any]:
                     "badge_class": w_badge,
                     "url": f"/inventory?property_id={property_id}",
                 })
+
+        # 6. Taxes & Fiscal milestones
+        taxes = conn.execute(
+            "SELECT * FROM taxes WHERE property_id = ? ORDER BY tax_year ASC, due_date ASC",
+            (property_id,),
+        ).fetchall()
+
+        for tx in taxes:
+            d_due = parse_date(tx["due_date"])
+            if d_due:
+                is_overdue = (d_due < today) and (tx["status"] == "À payer")
+                if tx["status"] == "Payé":
+                    badge_class = "badge-success"
+                    badge_text = "Payé"
+                elif tx["status"] == "Mensualisé":
+                    badge_class = "badge-accent"
+                    badge_text = "Mensualisé"
+                elif is_overdue:
+                    badge_class = "badge-danger"
+                    badge_text = "Échéance dépassée"
+                else:
+                    badge_class = "badge-warning"
+                    badge_text = "À payer"
+
+                sub = [f"Année {tx['tax_year']}"]
+                if tx["teom_amount"]:
+                    sub.append(f"dont TEOM {tx['teom_amount']:,.0f} €".replace(",", " "))
+                if tx["reference_number"]:
+                    sub.append(f"Réf: {tx['reference_number']}")
+
+                events.append({
+                    "id": f"tax_{tx['id']}",
+                    "type": "event",
+                    "category": "tax",
+                    "date": d_due,
+                    "title": f"{tx['tax_type']} {tx['tax_year']}",
+                    "subtitle": " • ".join(sub),
+                    "amount": f"{tx['amount']:,.0f} €".replace(",", " "),
+                    "icon": "fa-solid fa-landmark",
+                    "badge_text": badge_text,
+                    "badge_class": badge_class,
+                    "url": f"/taxes?property_id={property_id}",
+                })
     finally:
         conn.close()
 
@@ -343,6 +386,7 @@ def get_property_timeline(property_id: int) -> Dict[str, Any]:
         {"id": "all", "label": "Tous", "icon": "fa-solid fa-layer-group"},
         {"id": "maintenance", "label": "Entretien", "icon": "fa-solid fa-wrench"},
         {"id": "renovation", "label": "Travaux", "icon": "fa-solid fa-hammer"},
+        {"id": "tax", "label": "Fiscalité", "icon": "fa-solid fa-landmark"},
         {"id": "inventory", "label": "Équipements", "icon": "fa-solid fa-box-open"},
         {"id": "property", "label": "Logement", "icon": "fa-solid fa-house"},
     ]

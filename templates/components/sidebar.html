@@ -50,6 +50,11 @@
       <span>{{ t(request, 'nav.energy', 'Énergie & Consommations') }}</span>
     </a>
 
+    <a href="/taxes{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/taxes') %} active{% endif %}">
+      <i class="fa-solid fa-landmark"></i>
+      <span>{{ t(request, 'nav.taxes', 'Fiscalité & Taxes') }}</span>
+    </a>
+
     <a href="/cil{% if active_property %}?property_id={{ active_property.id }}{% endif %}" class="nav-link{% if request.url.path.startswith('/cil') %} active{% endif %}">
       <i class="fa-solid fa-file-lines"></i>
       <span>{{ t(request, 'nav.cil', 'Carnet Info Logement (CIL)') }}</span>

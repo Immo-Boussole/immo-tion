@@ -31,7 +31,7 @@ Alors qu'**Immo-Boussole** accompagne les acquéreurs dans la recherche, la veil
 
 ---
 
-## 🚀 Les 5 Piliers Fonctionnels
+## 🚀 Les 6 Piliers Fonctionnels
 
 1. **🛠️ Suivi de Travaux & Rénovations (Travaux / Tracking)**
    - Gestion des chantiers et des corps de métier (plomberie, électricité, isolation, décoration).
@@ -58,6 +58,11 @@ Alors qu'**Immo-Boussole** accompagne les acquéreurs dans la recherche, la veil
    - Relevés de consommations d'électricité, d'eau, de gaz, de bois et de granulés.
    - Corrélation des économies réalisées avant et après rénovation énergétique.
    - Suivi de l'étiquette DPE théorique et réelle post-travaux.
+
+6. **🏛️ Fiscalité & Taxes Locales (Fiscalité)**
+   - Suivi annuel des taxes locales : Taxe Foncière, TEOM (Ordures Ménagères), Taxe d'Habitation résidences secondaires, Taxe sur les logements vacants (TLV).
+   - Analyse pluriannuelle avec taux d'évolution YoY vs N-1, calcul de la part TEOM récupérable auprès du locataire, dates limites de paiement et archivage des avis PDF dans le coffre-fort documentaire.
+   - Intégration directe dans la frise chronologique du bien.
 
 ---
 

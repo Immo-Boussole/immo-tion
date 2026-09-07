@@ -31,7 +31,7 @@ While **Immo-Boussole** guides buyers through hunting, scouting, and evaluating 
 
 ---
 
-## 🚀 The 5 Functional Pillars
+## 🚀 The 6 Functional Pillars
 
 1. **🛠️ Renovations & Works Tracking (Travaux / Tracking)**
    - Project and trade management (plumbing, electrical, insulation, decoration).
@@ -58,6 +58,11 @@ While **Immo-Boussole** guides buyers through hunting, scouting, and evaluating 
    - Track electricity, water, gas, firewood, and wood pellet consumption over time.
    - Correlate energy savings before and after thermal insulation or heating upgrades.
    - Track theoretical and audited DPE energy efficiency ratings.
+
+6. **🏛️ Property Taxes & Fiscal Management (Fiscalité)**
+   - Annual tracking of local taxes: Property tax (*Taxe Foncière*), Waste collection tax (*TEOM*), Secondary residence tax (*Taxe d'Habitation*), Vacant property tax (*TLV*).
+   - Multi-year trend analysis with YoY evolution rates, recoverable TEOM charges calculation for rental properties, payment deadlines, and PDF tax notice archival in the Document Vault.
+   - Deep integration with the continuous chronological timeline.
 
 ---
 

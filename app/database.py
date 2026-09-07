@@ -165,6 +165,23 @@ def init_db(db_path: Optional[Path] = None) -> None:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Taxes & Fiscal Notices (Taxe foncière, TEOM, taxes locales)
+            CREATE TABLE IF NOT EXISTS taxes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                property_id INTEGER NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
+                tax_year INTEGER NOT NULL,
+                tax_type TEXT NOT NULL DEFAULT 'Taxe Foncière',
+                amount REAL NOT NULL,
+                teom_amount REAL DEFAULT 0.0,
+                due_date TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'Payé',
+                document_path TEXT,
+                reference_number TEXT,
+                notes TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+
             -- Users (Comptes utilisateurs et authentification)
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

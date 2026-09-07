@@ -28,6 +28,7 @@ from app.routers import (
     energy,
     cil,
     bridge,
+    taxes,
 )
 
 
@@ -181,6 +182,7 @@ app.include_router(documents.router)
 app.include_router(energy.router)
 app.include_router(cil.router)
 app.include_router(bridge.router)
+app.include_router(taxes.router)
 
 # Static assets and media files mount
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
