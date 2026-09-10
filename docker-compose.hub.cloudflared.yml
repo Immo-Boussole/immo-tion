@@ -49,7 +49,7 @@ services:
   # ── Cloudflare Tunnel Connector ──────────────────────────────────────────────
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: cloudflared
+    container_name: immo-tion-cloudflared
     restart: always
     command: tunnel run
     networks:

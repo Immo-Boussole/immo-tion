@@ -54,7 +54,7 @@ services:
   # ── Cloudflare Tunnel Connector ──────────────────────────────────────────────
   cloudflared:
     image: cloudflare/cloudflared:latest
-    container_name: cloudflared-${APP_ENV:-prod}
+    container_name: immo-tion-${APP_ENV:-prod}-cloudflared
     restart: always
     command: tunnel run
     networks:
