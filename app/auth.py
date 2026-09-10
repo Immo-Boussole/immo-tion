@@ -88,3 +88,16 @@ def verify_bearer_token(
         )
 
     return credentials.credentials
+
+
+def get_current_user(request: Request) -> Optional[dict]:
+    """Retrieve the current logged-in user dict from the active session."""
+    if not is_authenticated(request):
+        return None
+    username = request.session.get("username")
+    if not username:
+        return None
+    from app.database import get_user_by_username
+    row = get_user_by_username(username)
+    return dict(row) if row else None
+

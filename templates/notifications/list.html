@@ -1,0 +1,210 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ t(request, 'notif.title', 'Centre de Notifications') }} — Immo-Tion{% endblock %}
+
+{% block page_title %}{{ t(request, 'notif.title', 'Centre de Notifications') }}{% endblock %}
+
+{% block topbar_actions %}
+<button type="button" class="btn btn-secondary btn-sm" onclick="markAllRead('{{ selected_category }}')" title="{{ t(request, 'notif.mark_all_read', 'Tout marquer comme lu') }}">
+  <i class="fa-solid fa-check-double"></i>
+  <span class="d-none-mobile">{{ t(request, 'notif.mark_all_read', 'Tout marquer comme lu') }}</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      <i class="fa-solid fa-bell" style="color: var(--accent); margin-right: 0.5rem;"></i>{{ t(request, 'notif.title', 'Centre de Notifications') }}
+    </h1>
+    <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.25rem;">
+      {{ t(request, 'notif.subtitle', 'Alertes d\'entretien, échéances fiscales, chantiers et événements système') }}
+    </p>
+  </div>
+  <div class="page-header-actions">
+    <button type="button" class="btn btn-secondary" onclick="markAllRead('{{ selected_category }}')">
+      <i class="fa-solid fa-check-double"></i> {{ t(request, 'notif.mark_all_read', 'Tout marquer comme lu') }}
+    </button>
+  </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="notif-filters-bar card">
+  <div class="notif-category-tabs">
+    <a href="/notifications?category=all{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'all' %}active{% endif %}">
+      <i class="fa-solid fa-layer-group"></i> {{ t(request, 'notif.all', 'Toutes') }}
+    </a>
+    <a href="/notifications?category=maintenance{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'maintenance' %}active{% endif %}">
+      <i class="fa-solid fa-rotate"></i> {{ t(request, 'notif.maintenance', 'Entretien') }}
+    </a>
+    <a href="/notifications?category=taxes{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'taxes' %}active{% endif %}">
+      <i class="fa-solid fa-landmark"></i> {{ t(request, 'notif.taxes', 'Fiscalité') }}
+    </a>
+    <a href="/notifications?category=renovations{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'renovations' %}active{% endif %}">
+      <i class="fa-solid fa-screwdriver-wrench"></i> {{ t(request, 'notif.renovations', 'Travaux') }}
+    </a>
+    <a href="/notifications?category=documents{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'documents' %}active{% endif %}">
+      <i class="fa-solid fa-shield-halved"></i> {{ t(request, 'notif.documents', 'Garanties & CIL') }}
+    </a>
+    <a href="/notifications?category=bridge{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'bridge' %}active{% endif %}">
+      <i class="fa-solid fa-compass"></i> {{ t(request, 'notif.bridge', 'Passerelle') }}
+    </a>
+    <a href="/notifications?category=system{% if unread_only %}&unread_only=true{% endif %}" class="notif-tab {% if selected_category == 'system' %}active{% endif %}">
+      <i class="fa-solid fa-gear"></i> {{ t(request, 'notif.system', 'Système') }}
+    </a>
+  </div>
+
+  <div class="notif-status-toggle">
+    <label class="toggle-switch" title="{{ t(request, 'notif.unread_only', 'Non lues uniquement') }}">
+      <input type="checkbox" id="unreadOnlyToggle" {% if unread_only %}checked{% endif %} onchange="toggleUnreadOnly(this.checked)">
+      <span class="toggle-slider"></span>
+      <span class="toggle-label">{{ t(request, 'notif.unread_only', 'Non lues uniquement') }}</span>
+    </label>
+  </div>
+</div>
+
+<!-- Notifications Stream -->
+{% if notifications|length == 0 %}
+<div class="card notif-empty-state">
+  <div class="notif-empty-icon">
+    <i class="fa-solid fa-bell-slash"></i>
+  </div>
+  <h3>{{ t(request, 'notif.empty_title', 'Aucune notification') }}</h3>
+  <p>{{ t(request, 'notif.empty_desc', 'Vous êtes parfaitement à jour ! Aucune alerte en attente.') }}</p>
+</div>
+{% else %}
+<div class="notif-stream">
+  {% for n in notifications %}
+  <div class="notif-card {% if not n.is_read %}notif-unread{% endif %}" id="notif-card-{{ n.id }}" data-category="{{ n.category }}">
+    <div class="notif-icon-col">
+      <div class="notif-avatar notif-avatar-{{ n.category }}">
+        {% if n.category == 'maintenance' %}
+        <i class="fa-solid fa-rotate"></i>
+        {% elif n.category == 'taxes' %}
+        <i class="fa-solid fa-landmark"></i>
+        {% elif n.category == 'renovations' %}
+        <i class="fa-solid fa-screwdriver-wrench"></i>
+        {% elif n.category == 'documents' %}
+        <i class="fa-solid fa-shield-halved"></i>
+        {% elif n.category == 'bridge' %}
+        <i class="fa-solid fa-compass"></i>
+        {% else %}
+        <i class="fa-solid fa-bell"></i>
+        {% endif %}
+      </div>
+      {% if not n.is_read %}
+      <span class="notif-dot" title="Non lu"></span>
+      {% endif %}
+    </div>
+
+    <div class="notif-body">
+      <div class="notif-meta">
+        <span class="notif-badge-pill notif-pill-{{ n.category }}">
+          {{ t(request, 'notif.' ~ n.category, n.category|capitalize) }}
+        </span>
+        {% if n.property_name %}
+        <span class="notif-property-badge">
+          <i class="fa-solid fa-house-chimney"></i> {{ n.property_name }}
+        </span>
+        {% endif %}
+        <span class="notif-time" title="{{ n.created_at }}">
+          <i class="fa-regular fa-clock"></i> {{ n.created_at[:16] }}
+        </span>
+      </div>
+
+      <h3 class="notif-title">{{ n.title }}</h3>
+      <p class="notif-message">{{ n.message }}</p>
+
+      <div class="notif-actions">
+        {% if n.link_url %}
+        <a href="{{ n.link_url }}" class="btn btn-primary btn-sm notif-link-btn" onclick="quickMarkRead({{ n.id }})">
+          <i class="fa-solid fa-arrow-up-right-from-square"></i> {{ t(request, 'notif.open_link', 'Consulter') }}
+        </a>
+        {% endif %}
+
+        {% if not n.is_read %}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleReadStatus({{ n.id }}, true)" title="{{ t(request, 'notif.mark_read', 'Marquer comme lu') }}">
+          <i class="fa-solid fa-check"></i> <span class="d-none-mobile">{{ t(request, 'notif.mark_read', 'Marquer comme lu') }}</span>
+        </button>
+        {% else %}
+        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleReadStatus({{ n.id }}, false)" title="{{ t(request, 'notif.mark_unread', 'Marquer comme non lu') }}">
+          <i class="fa-regular fa-envelope"></i> <span class="d-none-mobile">{{ t(request, 'notif.mark_unread', 'Marquer non lu') }}</span>
+        </button>
+        {% endif %}
+
+        <button type="button" class="btn btn-danger btn-sm notif-delete-btn" onclick="deleteNotif({{ n.id }})" title="{{ t(request, 'notif.delete', 'Supprimer') }}">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<script>
+function toggleUnreadOnly(checked) {
+  const url = new URL(window.location.href);
+  if (checked) {
+    url.searchParams.set('unread_only', 'true');
+  } else {
+    url.searchParams.delete('unread_only');
+  }
+  window.location.href = url.toString();
+}
+
+async function toggleReadStatus(id, markRead) {
+  const endpoint = markRead ? `/api/v1/notifications/${id}/read` : `/api/v1/notifications/${id}/unread`;
+  try {
+    const res = await fetch(endpoint, { method: 'POST' });
+    if (res.ok) {
+      window.location.reload();
+    }
+  } catch (e) {
+    console.error('Failed to update notification:', e);
+  }
+}
+
+async function quickMarkRead(id) {
+  try {
+    fetch(`/api/v1/notifications/${id}/read`, { method: 'POST' });
+  } catch (e) {}
+}
+
+async function markAllRead(category) {
+  const body = new FormData();
+  if (category && category !== 'all') {
+    body.append('category', category);
+  }
+  try {
+    const res = await fetch('/api/v1/notifications/read-all', {
+      method: 'POST',
+      body: body,
+    });
+    if (res.ok) {
+      window.location.reload();
+    }
+  } catch (e) {
+    console.error('Failed to mark all as read:', e);
+  }
+}
+
+async function deleteNotif(id) {
+  if (!confirm('Supprimer cette notification ?')) return;
+  try {
+    const res = await fetch(`/api/v1/notifications/${id}/delete`, { method: 'POST' });
+    if (res.ok) {
+      const el = document.getElementById(`notif-card-${id}`);
+      if (el) {
+        el.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px)';
+        setTimeout(() => el.remove(), 200);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to delete notification:', e);
+  }
+}
+</script>
+{% endblock %}

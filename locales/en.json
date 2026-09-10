@@ -22,8 +22,9 @@
     "login": "Login",
     "navigation": "Navigation",
     "connected_as": "Logged in as:",
-    "active_property": "Active Property",
-    "select_property": "Select a property..."
+    "active_property": "Active property",
+    "select_property": "Select a property...",
+    "notifications": "Notifications"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -250,5 +251,35 @@
     "no_taxes": "No tax notices recorded for this property.",
     "teom_recoverable_badge": "Recoverable TEOM",
     "delete_confirm": "Are you sure you want to delete this tax notice?"
+  },
+  "notif": {
+    "title": "Notification Center",
+    "subtitle": "Maintenance alerts, tax deadlines, renovation milestones, and system events",
+    "mark_all_read": "Mark all as read",
+    "unread_only": "Unread only",
+    "all": "All",
+    "maintenance": "Maintenance",
+    "renovations": "Works & Renovations",
+    "taxes": "Taxes",
+    "documents": "Warranties & CIL",
+    "bridge": "Bridge",
+    "system": "System",
+    "empty_title": "No notifications",
+    "empty_desc": "You are completely up to date! No pending alerts.",
+    "mark_read": "Mark as read",
+    "mark_unread": "Mark as unread",
+    "delete": "Delete",
+    "open_link": "View item",
+    "test_title": "Test Push Notifications",
+    "test_desc": "Send a test notification via your Apprise URL.",
+    "test_btn": "Send test",
+    "test_success": "Test notification sent successfully!",
+    "test_error": "Failed to send test. Please check your Apprise URL format.",
+    "trigger_check": "Scan & notify now",
+    "trigger_success": "Deadlines scanned and notifications dispatched.",
+    "apprise_url_label": "Push Notification URL (Apprise)",
+    "apprise_url_hint": "Supports Discord, Telegram, Pushover, Gotify, ntfy, etc. (e.g. discord://webhook_id/token or tgram://bot_token/chat_id)",
+    "auto_read_label": "Automatic Notification Archival",
+    "auto_read_hint": "Automatically mark notifications older than X days as read"
   }
 }

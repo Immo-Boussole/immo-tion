@@ -45,11 +45,77 @@
             <label for="email">{{ t(request, 'profile.email', 'Email de notification') }}</label>
             <input type="email" id="email" name="email" class="form-control" value="{{ user.email if user and user.email else '' }}" placeholder="votre.email@exemple.fr">
           </div>
+
+          <div class="form-group">
+            <label for="apprise_url">{{ t(request, 'notif.apprise_url_label', 'URL de notification Push (Apprise)') }}</label>
+            <div style="display: flex; gap: 0.5rem; align-items: stretch;">
+              <input type="text" id="apprise_url" name="apprise_url" class="form-control" value="{{ user.apprise_url if user and user.apprise_url else '' }}" placeholder="discord://webhook_id/token ou tgram://bot_token/chat_id">
+              <button type="button" class="btn btn-secondary" onclick="testAppriseUrl()" title="{{ t(request, 'notif.test_btn', 'Tester') }}">
+                <i class="fa-solid fa-paper-plane"></i>
+                <span class="d-none-mobile">{{ t(request, 'notif.test_btn', 'Tester') }}</span>
+              </button>
+            </div>
+            <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8rem;">
+              {{ t(request, 'notif.apprise_url_hint', 'Supporte Discord, Telegram, Pushover, Gotify, ntfy, etc.') }}
+            </small>
+            <div id="testAppriseFeedback" style="display: none; margin-top: 0.5rem; font-size: 0.85rem;"></div>
+          </div>
+
+          <div class="form-group">
+            <label for="auto_read_after_days">{{ t(request, 'notif.auto_read_label', 'Archivage automatique des notifications') }}</label>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <input type="number" id="auto_read_after_days" name="auto_read_after_days" class="form-control" style="max-width: 100px;" value="{{ user.auto_read_after_days if user and user.auto_read_after_days is not none else 30 }}" min="1" max="365">
+              <span style="color: var(--text-muted); font-size: 0.9rem;">jours</span>
+            </div>
+            <small style="display: block; margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8rem;">
+              {{ t(request, 'notif.auto_read_hint', 'Marquer automatiquement comme lues les notifications de plus de X jours') }}
+            </small>
+          </div>
+
           <button type="submit" class="btn btn-secondary">
             <i class="fa-solid fa-floppy-disk"></i>
             <span>{{ t(request, 'common.save', 'Enregistrer') }}</span>
           </button>
         </form>
+
+        <script>
+        async function testAppriseUrl() {
+          const input = document.getElementById('apprise_url');
+          const fb = document.getElementById('testAppriseFeedback');
+          const val = input.value.trim();
+          if (!val) {
+            fb.style.display = 'block';
+            fb.style.color = '#ef4444';
+            fb.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Veuillez saisir une URL Apprise.';
+            return;
+          }
+
+          fb.style.display = 'block';
+          fb.style.color = 'var(--text-muted)';
+          fb.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Envoi du test en cours...';
+
+          const fd = new FormData();
+          fd.append('apprise_url', val);
+
+          try {
+            const res = await fetch('/api/v1/notifications/test', {
+              method: 'POST',
+              body: fd,
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              fb.style.color = '#10b981';
+              fb.innerHTML = '<i class="fa-solid fa-circle-check"></i> ' + data.message;
+            } else {
+              fb.style.color = '#ef4444';
+              fb.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> ' + (data.message || data.detail || 'Erreur lors du test');
+            }
+          } catch (e) {
+            fb.style.color = '#ef4444';
+            fb.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Erreur réseau : ' + e.message;
+          }
+        }
+        </script>
       </div>
     </div>
 

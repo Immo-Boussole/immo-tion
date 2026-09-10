@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     DATA_DIR: Path = Path("/data") if Path("/data").exists() else Path(__file__).resolve().parent.parent / "data"
     UPLOAD_DIR_NAME: str = "uploads"
 
-    # Notification & SMTP settings
+    # Notification & Multi-channel settings
+    APPRISE_URL: str = ""
     SMTP_HOST: Optional[str] = None
     SMTP_PORT: int = 587
     SMTP_USER: Optional[str] = None

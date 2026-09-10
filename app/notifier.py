@@ -99,3 +99,137 @@ async def dispatch_webhook_alert(event_type: str, data: Dict[str, Any]) -> List[
                 logger.error("Webhook dispatch failed for %s: %s", url, e)
                 results.append(False)
     return results
+
+
+# ── Apprise Push Dispatcher ───────────────────────────────────────────────────
+
+def _send_via_apprise(apprise_url: str, title: str, body: str) -> bool:
+    """Send a notification synchronously via Apprise to a given target URL."""
+    if not apprise_url or not apprise_url.strip():
+        return False
+    try:
+        import apprise
+        ap = apprise.Apprise()
+        ap.add(apprise_url.strip())
+        return ap.notify(title=title, body=body)
+    except Exception as e:
+        logger.error("Apprise notification failed for url %s: %s", apprise_url[:30], e)
+        return False
+
+
+async def send_test_notification(apprise_url: str) -> bool:
+    """Send a test notification to verify an Apprise URL."""
+    import asyncio
+    title = f"✅ Test {settings.APP_NAME}"
+    body = (
+        f"Vos notifications pour {settings.APP_NAME} sont correctement configurées !\n"
+        "Vous recevrez désormais les alertes d'entretien, de fiscalité et de chantiers."
+    )
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, _send_via_apprise, apprise_url, title, body)
+
+
+# ── Notification Orchestrator ─────────────────────────────────────────────────
+
+async def dispatch_notification(
+    title: str,
+    message: str,
+    category: str = "system",
+    property_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    link_url: Optional[str] = None,
+    event_key: Optional[str] = None,
+    db_path: Optional[Any] = None,
+) -> Optional[int]:
+    """
+    Central dispatcher for all notifications in Immo-Tion.
+    
+    1. Checks deduplication (event_key). If already notified, skips.
+    2. Persists In-App notification in SQLite.
+    3. Dispatches to Apprise URLs (user-specific and/or global setting).
+    4. Dispatches to configured webhooks.
+    5. Dispatches SMTP email if configured and recipient email is present.
+    """
+    import asyncio
+    from app.database import (
+        create_notification,
+        is_event_already_notified,
+        get_user_apprise_urls,
+        get_db_connection,
+    )
+
+    # 1. Deduplication check
+    if event_key and is_event_already_notified(event_key, db_path=db_path):
+        logger.debug("Notification skipped (already notified): event_key=%s", event_key)
+        return None
+
+    # 2. Persist in-app notification
+    notif_id = create_notification(
+        title=title,
+        message=message,
+        category=category,
+        property_id=property_id,
+        user_id=user_id,
+        link_url=link_url,
+        event_key=event_key,
+        db_path=db_path,
+    )
+
+    # 3. Gather Apprise target URLs
+    target_urls = set()
+    if settings.APPRISE_URL and settings.APPRISE_URL.strip():
+        target_urls.add(settings.APPRISE_URL.strip())
+
+    if user_id:
+        conn = get_db_connection(db_path)
+        try:
+            u = conn.execute("SELECT apprise_url, email FROM users WHERE id = ?", (user_id,)).fetchone()
+            if u and u["apprise_url"] and u["apprise_url"].strip():
+                target_urls.add(u["apprise_url"].strip())
+            recipient_email = u["email"] if u else None
+        finally:
+            conn.close()
+    else:
+        # Broadcast to all users who configured an Apprise URL
+        for url in get_user_apprise_urls(db_path=db_path):
+            target_urls.add(url)
+        recipient_email = None
+
+    # 4. Dispatch Apprise in background threads
+    if target_urls:
+        loop = asyncio.get_running_loop()
+        full_title = f"[{settings.APP_NAME}] {title}"
+
+        async def _run_apprise(target_url: str):
+            try:
+                await loop.run_in_executor(None, _send_via_apprise, target_url, full_title, message)
+            except Exception as e:
+                logger.error("Apprise background task failed: %s", e)
+
+        for url in target_urls:
+            asyncio.create_task(_run_apprise(url))
+
+    # 5. Dispatch Webhooks
+    asyncio.create_task(
+        dispatch_webhook_alert(
+            event_type=f"notification.{category}",
+            data={
+                "id": notif_id,
+                "title": title,
+                "message": message,
+                "category": category,
+                "property_id": property_id,
+                "link_url": link_url,
+                "event_key": event_key,
+            },
+        )
+    )
+
+    # 6. Dispatch Email SMTP if configured
+    if recipient_email:
+        asyncio.create_task(
+            send_email_alert(subject=title, body_text=message, recipient_email=recipient_email)
+        )
+
+    return notif_id
+

@@ -66,6 +66,17 @@ async def import_listing_from_immo_boussole(
         if payload.seed_tasks and property_id:
             seed_standard_maintenance_tasks(property_id)
 
+        # Trigger notification across in-app and push channels
+        from app.notifier import dispatch_notification
+        await dispatch_notification(
+            title=f"🌉 Nouveau bien importé : {payload.title}",
+            message=f"Le bien '{payload.title}' ({payload.city or ''}) a été importé avec succès depuis Immo-Boussole avec son carnet d'entretien initial.",
+            category="bridge",
+            property_id=property_id,
+            link_url=f"/properties/{property_id}",
+            event_key=f"bridge_import:{property_id}",
+        )
+
         return {
             "status": "success",
             "message": "Property successfully imported into Immo-Tion",

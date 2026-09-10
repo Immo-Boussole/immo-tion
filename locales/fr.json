@@ -23,7 +23,8 @@
     "navigation": "Navigation",
     "connected_as": "Connecté :",
     "active_property": "Bien actif",
-    "select_property": "Choisir un bien..."
+    "select_property": "Choisir un bien...",
+    "notifications": "Notifications"
   },
   "dashboard": {
     "title": "Tableau de Bord",
@@ -250,5 +251,35 @@
     "no_taxes": "Aucun avis de taxe enregistré pour ce bien.",
     "teom_recoverable_badge": "TEOM récupérable",
     "delete_confirm": "Êtes-vous sûr de vouloir supprimer cet avis d'imposition ?"
+  },
+  "notif": {
+    "title": "Centre de Notifications",
+    "subtitle": "Alertes d'entretien, échéances fiscales, chantiers et événements système",
+    "mark_all_read": "Tout marquer comme lu",
+    "unread_only": "Non lues uniquement",
+    "all": "Toutes",
+    "maintenance": "Entretien",
+    "renovations": "Travaux",
+    "taxes": "Fiscalité",
+    "documents": "Garanties & CIL",
+    "bridge": "Passerelle",
+    "system": "Système",
+    "empty_title": "Aucune notification",
+    "empty_desc": "Vous êtes parfaitement à jour ! Aucune alerte en attente.",
+    "mark_read": "Marquer comme lu",
+    "mark_unread": "Marquer comme non lu",
+    "delete": "Supprimer",
+    "open_link": "Consulter",
+    "test_title": "Tester les notifications push",
+    "test_desc": "Envoyez une notification de test via votre URL Apprise.",
+    "test_btn": "Envoyer le test",
+    "test_success": "Notification de test envoyée avec succès !",
+    "test_error": "Échec de l'envoi. Vérifiez le format de l'URL Apprise.",
+    "trigger_check": "Vérifier & notifier maintenant",
+    "trigger_success": "Échéances scannées et alertes émises.",
+    "apprise_url_label": "URL de notification Push (Apprise)",
+    "apprise_url_hint": "Supporte Discord, Telegram, Pushover, Gotify, ntfy, etc. (ex: discord://webhook_id/token ou tgram://bot_token/chat_id)",
+    "auto_read_label": "Archivage automatique des notifications",
+    "auto_read_hint": "Marquer automatiquement comme lues les notifications de plus de X jours"
   }
 }

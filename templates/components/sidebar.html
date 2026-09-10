@@ -67,6 +67,15 @@
       <span>{{ t(request, 'nav.properties', 'Mes Biens') }}</span>
     </a>
 
+    <a href="/notifications" class="nav-link{% if request.url.path.startswith('/notifications') %} active{% endif %}">
+      <i class="fa-solid fa-bell"></i>
+      <span>{{ t(request, 'nav.notifications', 'Notifications') }}</span>
+      {% set unread_cnt = get_unread_count(request) %}
+      {% if unread_cnt > 0 %}
+      <span class="sidebar-badge">{{ unread_cnt if unread_cnt < 100 else '99+' }}</span>
+      {% endif %}
+    </a>
+
     {% if request.session.get('role') == 'admin' %}
     <hr class="sidebar-divider">
     <div class="sidebar-section-title">Administration</div>

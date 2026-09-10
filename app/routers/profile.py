@@ -104,8 +104,10 @@ async def update_password(
 async def update_details(
     request: Request,
     email: Optional[str] = Form(None),
+    apprise_url: Optional[str] = Form(None),
+    auto_read_after_days: Optional[int] = Form(30),
 ):
-    """Update profile email."""
+    """Update profile email, Apprise URL, and notification auto-read threshold."""
     username = request.session.get("username")
     user = get_user_by_username(username) if username else None
     if not user:
@@ -115,8 +117,17 @@ async def update_details(
     try:
         with conn:
             conn.execute(
-                "UPDATE users SET email = ? WHERE id = ?",
-                (email.strip() if email else None, user["id"]),
+                """
+                UPDATE users 
+                SET email = ?, apprise_url = ?, auto_read_after_days = ?
+                WHERE id = ?
+                """,
+                (
+                    email.strip() if email else None,
+                    apprise_url.strip() if apprise_url else None,
+                    auto_read_after_days or 30,
+                    user["id"],
+                ),
             )
     finally:
         conn.close()
@@ -127,7 +138,8 @@ async def update_details(
         name="profile.html",
         context={
             "user": updated_user,
-            "success": "Informations mises à jour avec succès.",
+            "success": "Informations et préférences de notifications mises à jour avec succès.",
             "error": None,
         },
     )
+

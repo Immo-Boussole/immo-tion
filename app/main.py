@@ -29,16 +29,37 @@ from app.routers import (
     cil,
     bridge,
     taxes,
+    notifications,
 )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan context manager for database initialization and cleanup."""
+    import asyncio
+    from app.scheduler import run_deadline_evaluations_and_notify
+
     init_db()
     load_translations()
     settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    yield
+
+    # Launch background worker for periodic deadline evaluations and notification dispatch
+    async def scheduled_notification_worker():
+        await asyncio.sleep(2)
+        while True:
+            try:
+                await run_deadline_evaluations_and_notify()
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logging.getLogger("immo-tion.scheduler").error("Error in scheduled notification worker: %s", exc)
+            await asyncio.sleep(86400)
+
+    worker_task = asyncio.create_task(scheduled_notification_worker())
+    try:
+        yield
+    finally:
+        worker_task.cancel()
 
 
 app = FastAPI(
@@ -183,6 +204,7 @@ app.include_router(energy.router)
 app.include_router(cil.router)
 app.include_router(bridge.router)
 app.include_router(taxes.router)
+app.include_router(notifications.router)
 
 # Static assets and media files mount
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"

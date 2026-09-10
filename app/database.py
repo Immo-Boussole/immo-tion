@@ -190,8 +190,28 @@ def init_db(db_path: Optional[Path] = None) -> None:
                 salt BLOB NOT NULL,
                 role TEXT NOT NULL DEFAULT 'user',
                 email TEXT,
+                apprise_url TEXT,
+                auto_read_after_days INTEGER DEFAULT 30,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+
+            -- Notifications (In-App notifications center)
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                property_id INTEGER REFERENCES properties(id) ON DELETE SET NULL,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                category TEXT NOT NULL DEFAULT 'system',
+                link_url TEXT,
+                event_key TEXT,
+                is_read BOOLEAN DEFAULT 0,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                read_at DATETIME
+            );
+            CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, is_read);
+            CREATE INDEX IF NOT EXISTS idx_notifications_event_key ON notifications(event_key);
+            CREATE INDEX IF NOT EXISTS idx_notifications_category ON notifications(category);
 
             -- App Settings (Paramètres globaux & jetons)
             CREATE TABLE IF NOT EXISTS app_settings (
@@ -200,6 +220,13 @@ def init_db(db_path: Optional[Path] = None) -> None:
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
             """)
+
+            # Safe column migration for users table
+            user_cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+            if "apprise_url" not in user_cols:
+                conn.execute("ALTER TABLE users ADD COLUMN apprise_url TEXT")
+            if "auto_read_after_days" not in user_cols:
+                conn.execute("ALTER TABLE users ADD COLUMN auto_read_after_days INTEGER DEFAULT 30")
     finally:
         conn.close()
 
@@ -341,4 +368,244 @@ def regenerate_bridge_api_token(db_path: Optional[Path] = None) -> str:
     token = secrets.token_hex(24)
     set_setting("bridge_api_token", token, db_path=db_path)
     return token
+
+
+# ── Notification Helpers ───────────────────────────────────────────────────────
+
+def create_notification(
+    title: str,
+    message: str,
+    category: str = "system",
+    property_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    link_url: Optional[str] = None,
+    event_key: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> int:
+    """Insert a new in-app notification and return its ID."""
+    conn = get_db_connection(db_path)
+    try:
+        with conn:
+            cur = conn.execute(
+                """
+                INSERT INTO notifications (
+                    user_id, property_id, title, message, category, link_url, event_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, property_id, title, message, category, link_url, event_key),
+            )
+            return cur.lastrowid
+    finally:
+        conn.close()
+
+
+def is_event_already_notified(event_key: str, db_path: Optional[Path] = None) -> bool:
+    """Check if an event_key was already notified to prevent duplicate alerts."""
+    if not event_key:
+        return False
+    conn = get_db_connection(db_path)
+    try:
+        row = conn.execute(
+            "SELECT id FROM notifications WHERE event_key = ? LIMIT 1",
+            (event_key,),
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
+def get_notifications(
+    user_id: Optional[int] = None,
+    role: str = "user",
+    category: Optional[str] = None,
+    unread_only: bool = False,
+    limit: int = 50,
+    offset: int = 0,
+    db_path: Optional[Path] = None,
+) -> list:
+    """Retrieve notifications scoped by user/role with optional category and unread filters."""
+    conn = get_db_connection(db_path)
+    try:
+        query = """
+            SELECT n.*, p.name AS property_name
+            FROM notifications n
+            LEFT JOIN properties p ON n.property_id = p.id
+            WHERE 1=1
+        """
+        params = []
+
+        # Scope: if not admin, show global (user_id IS NULL) or specifically for this user
+        if role != "admin" and user_id is not None:
+            query += " AND (n.user_id = ? OR n.user_id IS NULL)"
+            params.append(user_id)
+
+        if category and category != "all":
+            query += " AND n.category = ?"
+            params.append(category)
+
+        if unread_only:
+            query += " AND n.is_read = 0"
+
+        query += " ORDER BY n.created_at DESC LIMIT ? OFFSET ?"
+        params.extend([limit, offset])
+
+        rows = conn.execute(query, params).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def get_unread_notifications_count(
+    user_id: Optional[int] = None,
+    role: str = "user",
+    db_path: Optional[Path] = None,
+) -> int:
+    """Return count of unread notifications visible to user/role."""
+    conn = get_db_connection(db_path)
+    try:
+        query = "SELECT COUNT(*) AS cnt FROM notifications WHERE is_read = 0"
+        params = []
+        if role != "admin" and user_id is not None:
+            query += " AND (user_id = ? OR user_id IS NULL)"
+            params.append(user_id)
+        row = conn.execute(query, params).fetchone()
+        return row["cnt"] if row else 0
+    finally:
+        conn.close()
+
+
+def mark_notification_read(
+    notification_id: int,
+    user_id: Optional[int] = None,
+    role: str = "user",
+    db_path: Optional[Path] = None,
+) -> bool:
+    """Mark a single notification as read."""
+    conn = get_db_connection(db_path)
+    try:
+        with conn:
+            query = "UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE id = ?"
+            params = [notification_id]
+            if role != "admin" and user_id is not None:
+                query += " AND (user_id = ? OR user_id IS NULL)"
+                params.append(user_id)
+            cur = conn.execute(query, params)
+            return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def mark_notification_unread(
+    notification_id: int,
+    user_id: Optional[int] = None,
+    role: str = "user",
+    db_path: Optional[Path] = None,
+) -> bool:
+    """Mark a single notification as unread."""
+    conn = get_db_connection(db_path)
+    try:
+        with conn:
+            query = "UPDATE notifications SET is_read = 0, read_at = NULL WHERE id = ?"
+            params = [notification_id]
+            if role != "admin" and user_id is not None:
+                query += " AND (user_id = ? OR user_id IS NULL)"
+                params.append(user_id)
+            cur = conn.execute(query, params)
+            return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def mark_all_notifications_read(
+    user_id: Optional[int] = None,
+    role: str = "user",
+    category: Optional[str] = None,
+    db_path: Optional[Path] = None,
+) -> int:
+    """Mark all notifications matching filters as read."""
+    conn = get_db_connection(db_path)
+    try:
+        with conn:
+            query = "UPDATE notifications SET is_read = 1, read_at = CURRENT_TIMESTAMP WHERE is_read = 0"
+            params = []
+            if role != "admin" and user_id is not None:
+                query += " AND (user_id = ? OR user_id IS NULL)"
+                params.append(user_id)
+            if category and category != "all":
+                query += " AND category = ?"
+                params.append(category)
+            cur = conn.execute(query, params)
+            return cur.rowcount
+    finally:
+        conn.close()
+
+
+def delete_notification(
+    notification_id: int,
+    user_id: Optional[int] = None,
+    role: str = "user",
+    db_path: Optional[Path] = None,
+) -> bool:
+    """Delete a notification."""
+    conn = get_db_connection(db_path)
+    try:
+        with conn:
+            query = "DELETE FROM notifications WHERE id = ?"
+            params = [notification_id]
+            if role != "admin" and user_id is not None:
+                query += " AND (user_id = ? OR user_id IS NULL)"
+                params.append(user_id)
+            cur = conn.execute(query, params)
+            return cur.rowcount > 0
+    finally:
+        conn.close()
+
+
+def cleanup_expired_notifications(db_path: Optional[Path] = None) -> int:
+    """Automatically mark as read or clean up old notifications based on users' auto_read_after_days."""
+    conn = get_db_connection(db_path)
+    total_cleaned = 0
+    try:
+        with conn:
+            # For each user, mark notifications older than auto_read_after_days as read
+            users = conn.execute("SELECT id, auto_read_after_days FROM users").fetchall()
+            for u in users:
+                days = u["auto_read_after_days"] or 30
+                cur = conn.execute(
+                    """
+                    UPDATE notifications
+                    SET is_read = 1, read_at = CURRENT_TIMESTAMP
+                    WHERE is_read = 0
+                      AND user_id = ?
+                      AND created_at <= datetime('now', '-' || ? || ' days')
+                    """,
+                    (u["id"], days),
+                )
+                total_cleaned += cur.rowcount
+
+            # Global notifications cleanup (fallback 30 days)
+            cur_global = conn.execute(
+                """
+                UPDATE notifications
+                SET is_read = 1, read_at = CURRENT_TIMESTAMP
+                WHERE is_read = 0
+                  AND user_id IS NULL
+                  AND created_at <= datetime('now', '-30 days')
+                """
+            )
+            total_cleaned += cur_global.rowcount
+        return total_cleaned
+    finally:
+        conn.close()
+
+
+def get_user_apprise_urls(db_path: Optional[Path] = None) -> list:
+    """Return all configured Apprise URLs across users."""
+    conn = get_db_connection(db_path)
+    try:
+        rows = conn.execute("SELECT apprise_url FROM users WHERE apprise_url IS NOT NULL AND TRIM(apprise_url) != ''").fetchall()
+        return [r["apprise_url"].strip() for r in rows if r["apprise_url"]]
+    finally:
+        conn.close()
+
 

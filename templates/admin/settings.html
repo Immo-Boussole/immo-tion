@@ -66,9 +66,56 @@
       <a href="/setup?step=1" class="btn btn-primary">
         <i class="fa-solid fa-play"></i>
         <span>{{ t(request, 'admin.run_setup_wizard', 'Lancer l\'assistant') }}</span>
-      </a>
+  </div>
+
+  <!-- Notification Engine & Scanning Card -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <div class="card-title">
+        <i class="fa-solid fa-bell"></i>
+        <span>{{ t(request, 'notif.title', 'Centre de Notifications') }} & Moteur d'Alertes</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p class="text-muted" style="margin-bottom: 1rem;">
+        Le moteur d'évaluation des échéances analyse automatiquement chaque jour les tâches d'entretien, dates limites fiscales, garanties et jalons de chantiers pour dispatcher les alertes in-app et push.
+      </p>
+      <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+        <button type="button" class="btn btn-secondary" onclick="triggerNotificationScan()" id="triggerScanBtn">
+          <i class="fa-solid fa-rotate"></i> {{ t(request, 'notif.trigger_check', 'Vérifier & notifier maintenant') }}
+        </button>
+        <div id="triggerScanFeedback" style="font-size: 0.9rem; font-weight: 500;"></div>
+      </div>
     </div>
   </div>
+
+  <script>
+  async function triggerNotificationScan() {
+    const btn = document.getElementById('triggerScanBtn');
+    const fb = document.getElementById('triggerScanFeedback');
+    btn.disabled = true;
+    fb.style.color = 'var(--text-muted)';
+    fb.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Scan des échéances en cours...';
+
+    try {
+      const res = await fetch('/api/v1/notifications/trigger-check', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fb.style.color = '#10b981';
+        const r = data.results || {};
+        fb.innerHTML = `<i class="fa-solid fa-circle-check"></i> Scan terminé : ${r.maintenance || 0} entretien, ${r.taxes || 0} fiscalité, ${r.renovations || 0} chantiers, ${r.inventory || 0} garanties (${r.auto_read_cleaned || 0} archivées).`;
+      } else {
+        fb.style.color = '#ef4444';
+        fb.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Erreur lors du scan.';
+      }
+    } catch (e) {
+      fb.style.color = '#ef4444';
+      fb.innerHTML = '<i class="fa-solid fa-circle-xmark"></i> Erreur : ' + e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  </script>
 
   <div class="grid-2-cols mb-4">
     <!-- System Metrics -->

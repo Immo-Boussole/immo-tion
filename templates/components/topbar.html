@@ -22,6 +22,14 @@
     </div>
     {% endif %}
 
+    <a href="/notifications" class="topbar-notif-btn" title="{{ t(request, 'nav.notifications', 'Notifications') }}" aria-label="{{ t(request, 'nav.notifications', 'Notifications') }}">
+      <i class="fa-solid fa-bell"></i>
+      {% set unread_cnt = get_unread_count(request) %}
+      {% if unread_cnt > 0 %}
+      <span class="notif-badge" id="topbarNotifBadge">{{ unread_cnt if unread_cnt < 100 else '99+' }}</span>
+      {% endif %}
+    </a>
+
     <div class="topbar-actions">
       {% block topbar_actions %}{% endblock %}
     </div>
