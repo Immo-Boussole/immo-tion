@@ -3,7 +3,7 @@
 # This file pulls images from Docker Hub and is designed for secure deployment.
 # All external communication passes through the Cloudflare Tunnel.
 
-name: immo-tion-hub-cloudflared
+name: ${COMPOSE_PROJECT_NAME:-immo-tion-hub-${APP_ENV:-prod}}
 
 services:
 

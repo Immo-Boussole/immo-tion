@@ -3,7 +3,7 @@
 # This file is designed for secure deployment without exposed ports.
 # All external communication passes through the Cloudflare Tunnel.
 
-name: immo-tion-cloudflared
+name: ${COMPOSE_PROJECT_NAME:-immo-tion-${APP_ENV:-prod}}
 
 services:
 
